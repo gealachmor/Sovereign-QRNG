@@ -1,0 +1,3437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOVEREIGN QRNG — PHOENIX</title>
+<style>
+:root {
+  --bg:     #080c10;
+  --surf:   rgba(255,255,255,0.03);
+  --bord:   rgba(255,255,255,0.07);
+  --text:   #e2e8f0;
+  --muted:  #8096b0;
+  --accent: #00d4ff;
+  --adim:   rgba(0,212,255,0.10);
+  --escher: #c084fc;
+  --esdim:  rgba(192,132,252,0.10);
+  --ok:     #22c55e;
+  --warn:   #f59e0b;
+  --danger: #ef4444;
+  --cpu:    #fb923c;
+  --audio:  #a78bfa;
+  --sdr0:   #38bdf8;
+  --sdr1:   #06b6d4;
+  --true:   #f59e0b;
+  --truedim:rgba(245,158,11,0.10);
+  --neg:    #818cf8;
+  --negdim: rgba(129,140,248,0.10);
+
+  --sz-h1:  clamp(15px, 2.1vw, 23px);
+  --sz-val: clamp(14px, 1.4vw, 20px);
+  --sz-bdy: clamp(11px, 0.9vw, 13px);
+  --sz-sm:  clamp(10px, 0.72vw, 12px);
+  --sz-xs:  clamp(9px,  0.6vw,  11px);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Courier New',Courier,monospace;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+body{display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.015) 2px,rgba(0,0,0,.015) 4px);}
+
+/* ── HEADER ── */
+#hdr{flex-shrink:0;padding:4px 12px;border-bottom:1px solid var(--bord);
+     display:flex;align-items:center;gap:12px;min-height:48px;}
+#hdr-left{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden;}
+#hdr h1{font-size:var(--sz-h1);letter-spacing:6px;color:var(--accent);
+  text-shadow:0 0 24px var(--accent);white-space:nowrap;}
+.tagline{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);text-transform:uppercase;white-space:nowrap;overflow:hidden;}
+
+/* ── TABS ── */
+.tab-nav{display:flex;gap:4px;margin-left:16px;}
+.tab-btn{background:transparent;border:1px solid var(--bord);border-radius:3px;
+  color:var(--muted);font-family:inherit;font-size:var(--sz-xs);letter-spacing:2px;
+  text-transform:uppercase;padding:4px 14px;cursor:pointer;transition:all .2s;}
+.tab-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tab-btn.active{border-color:var(--accent);color:var(--accent);
+  background:rgba(0,212,255,0.08);box-shadow:0 0 8px var(--adim);}
+.tab-btn.tab-true.active{border-color:var(--true);color:var(--true);
+  background:rgba(245,158,11,0.08);box-shadow:0 0 8px var(--truedim);}
+.tab-btn.tab-intel.active{border-color:var(--escher);color:var(--escher);
+  background:rgba(192,132,252,0.08);}
+
+#hdr-badges{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;}
+
+/* ── SIGNAL BARS (replaces text pill) ── */
+#sig-bars{display:flex;align-items:flex-end;gap:2px;height:22px;width:42px;flex-shrink:0;padding-bottom:1px;}
+.sig-bar{flex:1;border-radius:1px 1px 0 0;background:var(--muted);opacity:0.18;height:25%;
+  transition:background .5s,opacity .5s,box-shadow .5s;}
+.sig-bar.live{opacity:1;}
+.sig-bar.live[data-src="cam"]  {background:var(--accent);box-shadow:0 0 4px var(--accent);animation:sigb 1.3s ease-in-out infinite;}
+.sig-bar.live[data-src="sdr0"] {background:var(--sdr0);  box-shadow:0 0 4px var(--sdr0);  animation:sigb 1.1s ease-in-out infinite 0.10s;}
+.sig-bar.live[data-src="sdr1"] {background:var(--sdr1);  box-shadow:0 0 4px var(--sdr1);  animation:sigb 1.5s ease-in-out infinite 0.25s;}
+.sig-bar.live[data-src="cpu"]  {background:var(--cpu);   box-shadow:0 0 4px var(--cpu);   animation:sigb 0.9s ease-in-out infinite 0.05s;}
+.sig-bar.live[data-src="audio"]{background:var(--audio); box-shadow:0 0 4px var(--audio); animation:sigb 1.7s ease-in-out infinite 0.18s;}
+.sig-bar.warn{opacity:0.5;height:40%;}
+.sig-bar.warn[data-src="cam"]  {background:var(--warn);animation:sigb 2.5s ease-in-out infinite;}
+.sig-bar.warn[data-src="sdr0"] {background:var(--warn);animation:sigb 2.5s ease-in-out infinite 0.1s;}
+.sig-bar.warn[data-src="sdr1"] {background:var(--warn);animation:sigb 2.5s ease-in-out infinite 0.2s;}
+.sig-bar.warn[data-src="cpu"]  {background:var(--warn);animation:sigb 2.5s ease-in-out infinite 0.05s;}
+.sig-bar.warn[data-src="audio"]{background:var(--warn);animation:sigb 2.5s ease-in-out infinite 0.15s;}
+@keyframes sigb{0%,100%{height:25%}50%{height:88%}}
+#hdr-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+#clock{font-size:var(--sz-bdy);letter-spacing:3px;color:var(--muted);}
+#total-bps-hdr{font-size:clamp(13px,1.4vw,19px);font-weight:bold;color:var(--accent);
+  text-shadow:0 0 10px var(--adim);letter-spacing:2px;width:130px;text-align:right;white-space:nowrap;flex-shrink:0;}
+
+/* ── TAB CONTENT ── */
+.tab-content{display:none;flex:1;min-height:0;flex-direction:column;}
+.tab-content.active{display:flex;}
+
+/* ── MAIN GRID ── */
+.main-grid{flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(0,36%) minmax(0,1fr) minmax(0,28%);
+  grid-template-rows:1fr;
+  gap:6px;padding:6px 10px;overflow:hidden;}
+
+/* ── PANEL ── */
+.panel{background:var(--surf);border:1px solid var(--bord);border-radius:4px;
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;
+  transition:border-color .3s,box-shadow .3s;}
+.panel.glow-near{border-color:var(--accent);box-shadow:0 0 10px var(--adim);}
+.panel.glow-escher{border-color:var(--escher);box-shadow:0 0 12px var(--esdim);}
+.panel.glow-true{border-color:var(--true);box-shadow:0 0 10px var(--truedim);}
+.pbar{flex-shrink:0;padding:5px 10px;background:rgba(0,0,0,.35);
+  border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:7px;}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.dot.live-near{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:dp 2s ease-in-out infinite;}
+.dot.live-escher{background:var(--escher);box-shadow:0 0 6px var(--escher);animation:dp 2s ease-in-out infinite;}
+.dot.live-true{background:var(--true);box-shadow:0 0 6px var(--true);animation:dp 2s ease-in-out infinite;}
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.4}}
+.ptitle{font-size:var(--sz-bdy);font-weight:bold;letter-spacing:3px;text-transform:uppercase;}
+.psub{font-size:var(--sz-xs);letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.badge{margin-left:auto;font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
+  padding:2px 8px;border:1px solid;border-radius:2px;}
+.badge.dim{border-color:var(--muted)!important;color:var(--muted)!important;}
+
+/* ── CAMERA ── */
+.feed-wrap{position:relative;width:100%;flex:1;min-height:0;background:#000;overflow:hidden;}
+.feed-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.feed-wrap::before,.feed-wrap::after{content:'';position:absolute;width:12px;height:12px;z-index:2;pointer-events:none;}
+.feed-wrap::before{top:6px;left:6px;border-top:2px solid var(--accent);border-left:2px solid var(--accent);}
+.feed-wrap::after{bottom:6px;right:6px;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent);}
+.true-tab .feed-wrap::before,.true-tab .feed-wrap::after{border-color:var(--true);}
+.feed-tag{position:absolute;bottom:7px;left:8px;font-size:var(--sz-xs);letter-spacing:2px;
+  color:var(--accent);text-transform:uppercase;z-index:3;text-shadow:0 0 6px var(--accent);}
+.feed-offline{position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.9);color:var(--muted);}
+
+/* cam stats */
+.cam-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--bord);border-top:1px solid var(--bord);flex-shrink:0;}
+.stat{background:var(--bg);padding:4px 6px;text-align:center;}
+.sv{font-size:var(--sz-val);font-weight:bold;line-height:1;margin-bottom:3px;}
+.sl{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.cn{color:var(--accent);text-shadow:0 0 8px var(--adim);}
+.bok{color:var(--ok)!important;}
+.bwrn{color:var(--warn)!important;}
+.bbad{color:var(--danger)!important;}
+.cam-sub{display:flex;gap:0;background:var(--bord);border-top:none;flex-shrink:0;}
+.sub-cell{flex:1;background:#040710;padding:5px 6px;text-align:center;
+  border-right:1px solid var(--bord);}
+.sub-cell:last-child{border-right:none;}
+.sv2{font-size:var(--sz-sm);font-weight:bold;color:var(--muted);line-height:1;margin-bottom:2px;}
+.sl2{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:.6;}
+
+/* ── MULTI-CAM STACK ── */
+.cam-stack{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;scroll-behavior:smooth;}
+.cam-stack::-webkit-scrollbar{width:4px;}
+.cam-stack::-webkit-scrollbar-track{background:transparent;}
+.cam-stack::-webkit-scrollbar-thumb{background:var(--bord);border-radius:2px;}
+.cam-card{flex-shrink:0;border-bottom:1px solid var(--bord);border-left:2px solid transparent;transition:border-left-color .3s,background .3s;}
+.cam-card.cam-primary{border-left-color:var(--accent);background:rgba(0,212,255,.03);}
+.true-tab .cam-card.cam-primary{border-left-color:var(--true);background:rgba(245,158,11,.03);}
+.cam-card-bar{display:flex;align-items:center;gap:5px;padding:3px 8px;background:rgba(0,0,0,.45);cursor:pointer;user-select:none;}
+.cam-card-bar:hover{background:rgba(255,255,255,.03);}
+.cam-card-name{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cam-card-bdg{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;padding:1px 4px;border:1px solid var(--muted);border-radius:2px;color:var(--muted);flex-shrink:0;white-space:nowrap;}
+.cam-card-bdg.live{border-color:var(--ok);color:var(--ok);}
+.cam-card-bdg.warn{border-color:var(--warn);color:var(--warn);}
+.cam-feed{width:100%;aspect-ratio:16/9;background:#000;position:relative;overflow:hidden;}
+.cam-feed img{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-feed-tag{position:absolute;bottom:3px;left:5px;font-size:var(--sz-xs);letter-spacing:1px;color:rgba(255,255,255,.4);text-transform:uppercase;pointer-events:none;}
+.cam-offline-ov{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(0,0,0,.92);color:var(--muted);}
+
+/* ── MIDDLE COLUMN: split ── */
+.mid-col{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden;}
+.math-wrap{flex:1;min-height:60px;background:#03060c;position:relative;overflow:hidden;}
+.math-wrap canvas{display:block;width:100%;height:100%;}
+.escher-half{flex:1;min-height:0;background:#010810;position:relative;overflow:hidden;
+  border:1px solid var(--bord);border-radius:4px;}
+.escher-half canvas{display:block;width:100%;height:100%;}
+.canvas-info{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:3px 10px;background:rgba(0,0,0,0.45);border-bottom:1px solid var(--bord);font-size:var(--sz-xs);letter-spacing:1px;}
+.canvas-info span{white-space:nowrap;}
+.cplx-track{width:64px;height:4px;background:rgba(0,0,0,0.5);border:1px solid var(--bord);border-radius:2px;overflow:hidden;flex-shrink:0;}
+.cplx-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);width:0%;transition:width .5s;}
+.cplx-group{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0;}
+.escher-split{display:flex;flex:1;min-height:80px;gap:3px;}
+.escher-disk-wrap,.escher-ode-wrap{flex:1;min-height:0;background:#010810;position:relative;overflow:hidden;border:1px solid var(--bord);border-radius:4px;isolation:isolate;}
+.escher-disk-wrap canvas,.escher-ode-wrap canvas{display:block;width:100%;height:100%;}
+#quality-strip{flex-shrink:0;padding:4px 10px;border-top:1px solid var(--bord);
+  display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);}
+.ql{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.qbar-track{flex:1;height:8px;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:2px;overflow:hidden;}
+.qbar-fill{height:100%;background:linear-gradient(90deg,var(--danger),var(--warn),var(--ok));border-radius:1px;transition:width .8s;}
+.qval{font-size:var(--sz-xs);letter-spacing:1px;color:var(--escher);width:130px;text-align:right;flex-shrink:0;white-space:nowrap;}
+#spark-wrap{flex-shrink:0;height:28px;border-top:1px solid var(--bord);
+  background:rgba(0,0,0,.4);padding:2px 6px;}
+#spark-wrap canvas{width:100%;height:100%;display:block;}
+
+/* ── RIGHT: Sources + Hardware catalog ── */
+.src-list{flex-shrink:0;overflow-y:auto;border-bottom:1px solid var(--bord);max-height:120px;}
+.src-row{display:flex;align-items:center;gap:5px;padding:4px 8px;
+  border-bottom:1px solid var(--bord);}
+.src-row:last-child{border-bottom:none;}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s,box-shadow .4s;}
+.src-name{font-size:var(--sz-sm);letter-spacing:2px;text-transform:uppercase;flex:1;min-width:0;}
+.src-bps{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);width:80px;text-align:right;flex-shrink:0;overflow:hidden;}
+.src-status{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;
+  padding:2px 5px;border:1px solid var(--muted);border-radius:2px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.src-status.live{border-color:var(--ok)!important;color:var(--ok)!important;}
+.src-status.warn{border-color:var(--warn)!important;color:var(--warn)!important;}
+.src-status.err{border-color:var(--danger)!important;color:var(--danger)!important;}
+.sdot.live[data-src="cam"]{background:var(--accent);box-shadow:0 0 5px var(--accent);animation:dp 2.0s ease-in-out infinite;}
+.sdot.live[data-src="sdr0"]{background:var(--sdr0);box-shadow:0 0 5px var(--sdr0);animation:dp 2.2s ease-in-out infinite;}
+.sdot.live[data-src="sdr1"]{background:var(--sdr1);box-shadow:0 0 5px var(--sdr1);animation:dp 1.8s ease-in-out infinite;}
+.sdot.live[data-src="cpu"]{background:var(--cpu);box-shadow:0 0 5px var(--cpu);animation:dp 1.6s ease-in-out infinite;}
+.sdot.live[data-src="audio"]{background:var(--audio);box-shadow:0 0 5px var(--audio);animation:dp 2.4s ease-in-out infinite;}
+.setup-btn{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
+  padding:2px 6px;border:1px solid var(--warn);border-radius:2px;color:var(--warn);
+  background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:background .2s;}
+.setup-btn:hover{background:rgba(245,158,11,.15);}
+
+/* Hardware catalog */
+.hw-catalog{flex:1;overflow-y:auto;padding:0;}
+.hw-header{padding:6px 9px;font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--bord);background:rgba(0,0,0,.2);}
+.hw-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.04);cursor:default;}
+.hw-row:hover{background:rgba(255,255,255,.02);}
+.hw-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.hw-dot.connected{background:var(--ok);box-shadow:0 0 5px var(--ok);animation:dp 2s ease-in-out infinite;}
+.hw-dot.available{background:var(--muted);}
+.hw-name{font-size:var(--sz-sm);letter-spacing:1px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hw-price{font-size:var(--sz-xs);color:var(--muted);white-space:nowrap;margin-right:4px;}
+.hw-status{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;
+  padding:1px 5px;border:1px solid;border-radius:2px;white-space:nowrap;flex-shrink:0;}
+.hw-status.connected{border-color:var(--ok);color:var(--ok);}
+.hw-status.available{border-color:var(--muted);color:var(--muted);}
+.hw-status.exotic{border-color:var(--escher);color:var(--escher);}
+
+/* vault bar */
+#bottom,#bottom-true{flex-shrink:0;border-top:1px solid var(--bord);
+  height:36px;padding:0 12px;
+  display:flex;align-items:center;gap:8px;overflow:hidden;}
+.vault-row{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden;}
+.vl{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.vtrack{flex:1;min-width:40px;height:8px;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:2px;overflow:hidden;}
+.vfill{height:100%;transition:width 1.5s ease;position:relative;overflow:hidden;
+  background:linear-gradient(90deg,#001122,#004466,var(--accent));box-shadow:2px 0 8px var(--accent);}
+.vfill::after{content:'';position:absolute;inset:0;width:50%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);animation:shim 2s linear infinite;}
+@keyframes shim{0%{transform:translateX(-150%)}100%{transform:translateX(300%)}}
+.vpct{font-size:var(--sz-xs);font-weight:bold;color:var(--accent);white-space:nowrap;flex-shrink:0;}
+.vgb{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+/* ── INTEL TAB ── */
+#tab-intel .intel-body{flex:1;min-height:0;overflow-y:auto;padding:14px 20px;display:block;}
+.intel-section{border:1px solid var(--bord);border-radius:4px;overflow:hidden;flex-shrink:0;margin-bottom:14px;}
+.intel-section:last-child{margin-bottom:4px;}
+.intel-sec-hdr{padding:10px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
+.intel-sec-hdr h2{font-size:var(--sz-bdy);letter-spacing:4px;text-transform:uppercase;flex:1;}
+.intel-sec-hdr .chevron{font-size:var(--sz-sm);color:var(--muted);transition:transform .3s;}
+.intel-sec-hdr.open .chevron{transform:rotate(180deg);}
+.intel-sec-body{padding:12px 16px;display:none;line-height:1.7;}
+.intel-sec-body.open{display:block;}
+.intel-sec-body p{font-size:var(--sz-sm);color:var(--text);margin-bottom:10px;}
+.intel-sec-body h3{font-size:var(--sz-sm);letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent);margin:14px 0 6px;}
+.intel-sec-body code{background:rgba(0,212,255,.08);padding:1px 6px;border-radius:2px;color:var(--sdr0);}
+.intel-sec-body ul{padding-left:20px;}
+.intel-sec-body li{font-size:var(--sz-sm);color:var(--text);margin-bottom:6px;}
+.intel-sec-body li b{color:var(--accent);}
+.hw-table{width:100%;border-collapse:collapse;margin-top:10px;}
+.hw-table th{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  padding:6px 10px;border-bottom:1px solid var(--bord);text-align:left;}
+.hw-table td{font-size:var(--sz-sm);padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);}
+.hw-table tr:hover td{background:rgba(255,255,255,.02);}
+.tag-q{color:var(--accent);font-size:var(--sz-xs);border:1px solid var(--accent);
+  padding:1px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;}
+.tag-t{color:var(--true);font-size:var(--sz-xs);border:1px solid var(--true);
+  padding:1px 5px;border-radius:2px;vertical-align:middle;margin-left:4px;}
+/* Troubleshooting wizard */
+.wiz-node{padding:10px 12px;background:rgba(0,0,0,.2);border-radius:4px;margin-bottom:8px;}
+.wiz-q{font-size:var(--sz-bdy);color:var(--text);margin-bottom:10px;}
+.wiz-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.wiz-btn{padding:7px 18px;border:1px solid var(--bord);border-radius:3px;background:transparent;
+  color:var(--text);font-family:inherit;font-size:var(--sz-sm);cursor:pointer;transition:all .2s;}
+.wiz-btn:hover{border-color:var(--accent);color:var(--accent);}
+.wiz-solved{padding:14px;background:rgba(34,197,94,.08);border:1px solid var(--ok);
+  border-radius:4px;color:var(--ok);font-size:var(--sz-sm);}
+.wiz-back{font-size:var(--sz-xs);color:var(--muted);background:none;border:none;
+  cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase;margin-top:8px;}
+.wiz-back:hover{color:var(--text);}
+
+/* ── SDR SETUP MODAL ── */
+#sdr-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:9999;align-items:center;justify-content:center;}
+#sdr-modal.open{display:flex;}
+#sdr-box{background:#0d1117;border:1px solid var(--warn);border-radius:6px;max-width:500px;width:90%;padding:22px 26px;position:relative;}
+#sdr-box h2{font-size:var(--sz-bdy);letter-spacing:4px;text-transform:uppercase;color:var(--warn);margin-bottom:14px;}
+.sdr-step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;}
+.sdr-num{width:24px;height:24px;border-radius:50%;background:var(--warn);color:#000;font-weight:bold;
+  font-size:var(--sz-xs);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sdr-text{font-size:var(--sz-sm);line-height:1.7;color:var(--text);}
+.sdr-text code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:3px;color:var(--sdr0);font-family:inherit;}
+#sdr-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+#sdr-close:hover{color:var(--text);}
+
+/* ── PURGE TRIPLE LOCK ── */
+#purge-lock{display:flex;align-items:center;gap:5px;flex-shrink:0;padding-right:8px;border-right:1px solid var(--bord);}
+.purge-lbl{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.lock-sw{display:inline-flex;align-items:center;cursor:pointer;}
+.lock-sw input{display:none;}
+.lock-track{width:26px;height:14px;border-radius:2px;border:1px solid var(--muted);
+  background:rgba(0,0,0,.4);position:relative;transition:.2s;}
+.lock-track::after{content:'';position:absolute;top:2px;left:2px;
+  width:8px;height:8px;border-radius:1px;background:var(--muted);transition:.2s;}
+.lock-sw input:checked + .lock-track{border-color:var(--danger);}
+.lock-sw input:checked + .lock-track::after{left:14px;background:var(--danger);}
+#purge-btn{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
+  padding:2px 7px;border:1px solid var(--muted);border-radius:2px;color:var(--muted);
+  background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:all .2s;}
+#purge-btn:not(:disabled){border-color:var(--danger);color:var(--danger);animation:purgepls 1.2s ease-in-out infinite;}
+#purge-btn:disabled{opacity:.35;cursor:not-allowed;}
+@keyframes purgepls{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px var(--danger);}}
+
+/* ── ESCHER ODE MODE BUTTONS ── */
+.ode-mode-btn{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;
+  padding:1px 5px;border:1px solid var(--bord);border-radius:2px;color:var(--muted);
+  background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .2s;}
+.ode-mode-btn.active{border-color:var(--escher);color:var(--escher);}
+.ode-mode-btn:hover{border-color:rgba(192,132,252,.5);color:rgba(192,132,252,.7);}
+
+/* ── TRUE BOTTOM STATUS ── */
+#true-engine-status{display:flex;align-items:center;gap:6px;flex-shrink:0;padding-right:8px;border-right:1px solid var(--bord);}
+#quality-strip-true{flex-shrink:0;padding:4px 10px;border-top:1px solid var(--bord);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);}
+
+/* ── ESCHER 3D TILT — Y-axis only (no vertical overflow possible) ── */
+.escher-disk-wrap canvas{animation:eschTlt 14s ease-in-out infinite;transform-origin:center;}
+.escher-ode-wrap canvas{animation:eschTltB 18s ease-in-out infinite 3.5s;transform-origin:center;}
+@keyframes eschTlt{
+  0%,100%{transform:perspective(500px) rotateY(0deg) scale(0.9);}
+  50%{transform:perspective(500px) rotateY(20deg) scale(0.85);}
+}
+@keyframes eschTltB{
+  0%,100%{transform:perspective(500px) rotateY(0deg) scale(0.9);}
+  50%{transform:perspective(500px) rotateY(-20deg) scale(0.85);}
+}
+
+/* ── INTEL TAB CARDS ── */
+.intel-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.intel-kcard{border:1px solid var(--bord);border-radius:4px;padding:12px;background:rgba(0,0,0,.2);}
+.intel-kcard-hdr{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;font-weight:bold;margin-bottom:6px;}
+.intel-kcard-body{font-size:var(--sz-sm);color:var(--text);line-height:1.7;}
+.intel-risk-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.intel-risk{display:flex;gap:10px;align-items:flex-start;font-size:var(--sz-sm);line-height:1.65;}
+.risk-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.src-explain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+.src-explain-card{border:1px solid var(--bord);border-radius:4px;padding:12px;background:rgba(0,0,0,.15);}
+.src-explain-hdr{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;font-weight:bold;margin-bottom:8px;}
+.src-explain-body p{font-size:var(--sz-sm);color:var(--text);line-height:1.7;margin-bottom:6px;}
+.src-explain-rate{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);border-top:1px solid var(--bord);padding-top:6px;margin-top:4px;}
+ol.intel-steps{padding-left:18px;margin:6px 0 12px;}
+ol.intel-steps li{font-size:var(--sz-sm);color:var(--text);margin-bottom:8px;line-height:1.65;}
+.intel-fix-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px;}
+.intel-fix{border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:12px;background:rgba(239,68,68,.03);}
+.intel-fix-prob{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--danger);font-weight:bold;margin-bottom:8px;}
+ol.intel-fix-steps{padding-left:16px;margin:0;}
+ol.intel-fix-steps li{font-size:var(--sz-sm);color:var(--text);margin-bottom:5px;line-height:1.6;}
+/* ── SYSTEM ADVISOR ── */
+#advisor-panel{border-top:1px solid var(--bord);background:rgba(0,0,0,.2);flex-shrink:0;}
+.adv-header{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--bord);cursor:default;}
+.adv-indicator{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s,box-shadow .4s;}
+.adv-indicator.ok{background:var(--ok);box-shadow:0 0 6px var(--ok);}
+.adv-indicator.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);animation:dp 1.2s ease-in-out infinite;}
+.adv-indicator.thinking{background:var(--escher);animation:dp 0.7s ease-in-out infinite;}
+.adv-title{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;flex:1;color:var(--muted);}
+.adv-badge{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.adv-ai-tag{font-size:9px;letter-spacing:1px;border:1px solid var(--escher);color:var(--escher);padding:1px 4px;border-radius:2px;flex-shrink:0;}
+.adv-ai-tag.offline{border-color:var(--muted);color:var(--muted);}
+.adv-body{max-height:150px;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:5px;}
+.adv-body:empty::before{content:'Monitoring system…';font-size:var(--sz-xs);color:var(--muted);padding:4px 2px;letter-spacing:1px;}
+.adv-card{border:1px solid var(--bord);border-radius:3px;padding:7px 28px 7px 9px;background:rgba(0,0,0,.3);position:relative;}
+.adv-card.warn{border-color:rgba(245,158,11,.35);}
+.adv-card.ok-card{border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);}
+.adv-card-title{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--warn);margin-bottom:3px;font-weight:bold;}
+.adv-card-title.ok{color:var(--ok);}
+.adv-text{font-size:var(--sz-xs);color:var(--text);line-height:1.65;white-space:pre-wrap;letter-spacing:.2px;}
+.adv-dismiss{position:absolute;top:4px;right:5px;background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 4px;line-height:1;}
+.adv-dismiss:hover{color:var(--text);}
+/* ── SOVEREIGN TOOLS TAB ── */
+.tab-btn.tab-tools.active{border-color:var(--ok);color:var(--ok);
+  background:rgba(34,197,94,0.08);box-shadow:0 0 8px rgba(34,197,94,0.12);}
+#tab-tools{flex:1;min-height:0;overflow:hidden;}
+.tools-body{height:100%;overflow-y:auto;padding:16px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;align-content:start;}
+.tool-card{background:var(--surf);border:1px solid var(--bord);border-radius:6px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:9px;
+  transition:border-color .3s;}
+.tool-card:hover{border-color:rgba(34,197,94,.3);}
+.tool-title{font-size:var(--sz-bdy);letter-spacing:3px;text-transform:uppercase;color:var(--ok);}
+.tool-desc{font-size:var(--sz-xs);color:var(--muted);letter-spacing:.8px;line-height:1.65;}
+.tool-output{font-size:var(--sz-sm);letter-spacing:1.5px;color:var(--accent);
+  background:rgba(0,0,0,.35);border:1px solid var(--bord);border-radius:3px;
+  padding:7px 10px;min-height:30px;word-break:break-all;font-family:'Courier New',monospace;
+  transition:border-color .4s;}
+.tool-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.tool-btn{padding:5px 13px;border:1px solid var(--ok);border-radius:3px;
+  background:rgba(34,197,94,.07);color:var(--ok);font-family:inherit;
+  font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+  transition:all .2s;}
+.tool-btn:hover{background:rgba(34,197,94,.18);box-shadow:0 0 8px rgba(34,197,94,.18);}
+.tool-btn.copy-btn{border-color:var(--muted);background:transparent;color:var(--muted);}
+.tool-btn.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tool-label{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);white-space:nowrap;}
+.tool-slider{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+  background:var(--bord);outline:none;cursor:pointer;flex:1;min-width:70px;}
+.tool-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--ok);cursor:pointer;}
+.tool-check-row{display:flex;gap:10px;flex-wrap:wrap;}
+.tool-chk{display:flex;align-items:center;gap:4px;cursor:pointer;
+  font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;}
+.tool-chk input{accent-color:var(--ok);}
+.tool-advisory{font-size:var(--sz-xs);color:var(--muted);line-height:1.85;
+  letter-spacing:.4px;padding:2px 0;}
+.tool-advisory b{color:var(--ok);}
+.tool-advisory code{color:var(--sdr0);background:rgba(0,212,255,.06);
+  padding:1px 5px;border-radius:2px;}
+.dice-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+#coin-result{font-size:clamp(16px,2.2vw,24px);letter-spacing:2px;}
+#dice-result{font-size:clamp(20px,3vw,32px);font-weight:bold;min-width:40px;text-align:center;}
+.tool-number{width:70px;background:rgba(0,0,0,.4);border:1px solid var(--bord);border-radius:3px;
+  color:var(--accent);font-family:inherit;font-size:var(--sz-bdy);padding:4px 8px;
+  text-align:center;-moz-appearance:textfield;}
+.tool-number::-webkit-outer-spin-button,.tool-number::-webkit-inner-spin-button{-webkit-appearance:none;}
+
+/* ══════════════════════════════════════════════════════════════
+   ERGONOMIC REDESIGN — Evidence-based psychology principles
+   Miller's Law · Inverted Pyramid · Dual Coding · Von Restorff
+   Fogg Behavior Model · Gestalt · F-Pattern · Progressive Disclosure
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── INTEL: BODY TEXT LEGIBILITY ── */
+/* Research: 16px+ for body; terminal UI compromise = 13px minimum */
+.intel-sec-body p,.intel-sec-body>ul li,
+ol.intel-steps li,ol.intel-fix-steps li,
+.intel-risk,.intel-kcard-body,
+.src-explain-body p,.hw-table td{font-size:13px;}
+
+/* ── INTEL: SECTION LEFT-BORDER COLOR INDICATORS ── */
+/* Gestalt Law of Similarity + F-pattern: colour at left edge = instant priority cue */
+.intel-section.il-accent{border-left:3px solid rgba(0,212,255,.65);}
+.intel-section.il-danger{border-left:3px solid rgba(239,68,68,.65);}
+.intel-section.il-escher{border-left:3px solid rgba(192,132,252,.65);}
+.intel-section.il-ok    {border-left:3px solid rgba(34,197,94,.65);}
+.intel-section.il-warn  {border-left:3px solid rgba(245,158,11,.65);}
+
+/* ── INTEL: HERO STATUS BAR ── */
+/* Inverted Pyramid: give users system state BEFORE reading any explanation */
+.intel-hero{display:grid;grid-template-columns:repeat(3,1fr);
+  background:rgba(0,0,0,.45);border:1px solid var(--bord);border-radius:4px;overflow:hidden;
+  margin-bottom:14px;}
+.intel-hero-card{text-align:center;padding:12px 6px;border-right:1px solid var(--bord);}
+.intel-hero-card:last-child{border-right:none;}
+.intel-hero-label{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.intel-hero-val{font-size:clamp(15px,1.4vw,21px);font-weight:bold;letter-spacing:1px;}
+.intel-hero-sub{font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;margin-top:3px;opacity:.65;}
+
+/* ── INTEL: SOURCE CARD VISUAL ANCHOR ── */
+/* Dual Coding Theory: symbol + name + description = 3 encoding paths */
+.src-explain-sym{font-size:18px;flex-shrink:0;line-height:1;}
+.src-explain-hdr{display:flex;align-items:center;gap:8px;}
+
+/* ── TOOLS: OUTPUT PROMINENCE ── */
+/* Fogg: result is the hero — eye must find it first, before controls */
+.tool-output{min-height:44px;font-size:clamp(12px,1.1vw,15px);}
+
+/* ── TOOLS: PRIMARY GENERATE BUTTON ── */
+/* Von Restorff: primary action must be visually distinct from secondary copy */
+.tool-btn.generate{padding:7px 22px;font-size:var(--sz-bdy);font-weight:bold;
+  background:rgba(34,197,94,.18);border-width:1.5px;letter-spacing:3px;}
+.tool-btn.generate:hover{background:rgba(34,197,94,.32);box-shadow:0 0 14px rgba(34,197,94,.22);}
+
+/* ── TOOLS: SOURCE TRUST BADGE ── */
+.tool-trust{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--ok);
+  opacity:.5;border:1px solid rgba(34,197,94,.25);border-radius:2px;padding:1px 5px;
+  margin-left:auto;white-space:nowrap;flex-shrink:0;}
+
+/* ── TOOLS: COPY SUCCESS FLASH ── */
+.tool-btn.copy-ok{color:var(--ok)!important;border-color:var(--ok)!important;transition:color 0s,border-color 0s!important;}
+
+/* ══════════════════════════════════════════════════════════
+   SOVEREIGN VAULT — QRNG-Encrypted Password Library
+   ══════════════════════════════════════════════════════════ */
+.vault-hdr{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:7px 16px;
+  border-bottom:1px solid var(--bord);background:rgba(0,0,0,.35);}
+.vault-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .4s,box-shadow .4s;}
+.vault-dot.armed {background:var(--ok);box-shadow:0 0 7px var(--ok);animation:dp 2s ease-in-out infinite;}
+.vault-dot.locked{background:var(--warn);}
+.vault-dot.sealed{background:var(--danger);}
+.vault-lbl{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;transition:color .4s;}
+.vault-lbl.armed {color:var(--ok);}
+.vault-lbl.locked{color:var(--warn);}
+.vault-lbl.sealed{color:var(--danger);}
+.vault-ebar-wrap{display:flex;align-items:center;gap:5px;flex:1;max-width:220px;}
+.vault-ebar-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.vault-ebar-track{flex:1;height:5px;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:2px;overflow:hidden;}
+.vault-ebar-fill{height:100%;background:linear-gradient(90deg,var(--danger),var(--warn),var(--ok));border-radius:1px;transition:width 1s ease;}
+.vault-ebar-pct{font-size:8px;color:var(--muted);white-space:nowrap;width:36px;}
+.vault-hdr-btn{padding:4px 12px;border-radius:3px;font-family:inherit;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;}
+.vault-hdr-btn.arm {border:1px solid var(--warn);color:var(--warn);background:transparent;}
+.vault-hdr-btn.arm:hover{background:rgba(245,158,11,.15);}
+.vault-hdr-btn.open{border:1px solid var(--ok);color:var(--ok);background:transparent;}
+.vault-hdr-btn.open:hover{background:rgba(34,197,94,.15);}
+.vault-hdr-btn.sealed{border:1px solid var(--muted);color:var(--muted);background:transparent;cursor:not-allowed;opacity:.5;}
+.vault-hdr-sep{width:1px;height:18px;background:var(--bord);flex-shrink:0;}
+.vault-count{font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;white-space:nowrap;}
+
+/* Inline "SAVE" button added to password/passphrase rows */
+.tool-btn.vault-save{border-color:var(--ok);color:var(--ok);background:rgba(34,197,94,.06);}
+.tool-btn.vault-save:hover{background:rgba(34,197,94,.2);}
+.tool-btn.vault-save:disabled{opacity:.3;cursor:not-allowed;border-color:var(--muted)!important;color:var(--muted)!important;}
+
+/* ── VAULT MODALS ── */
+.vault-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9997;
+  align-items:center;justify-content:center;}
+.vault-modal.open{display:flex;}
+.vault-box{background:#070c12;border:1px solid var(--bord);border-radius:6px;
+  width:min(540px,94vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
+.vault-box.lib{width:min(680px,96vw);}
+.vault-box-hdr{flex-shrink:0;padding:13px 18px;border-bottom:1px solid var(--bord);
+  background:rgba(0,0,0,.4);display:flex;align-items:center;gap:10px;}
+.vault-box-title{font-size:var(--sz-bdy);letter-spacing:4px;text-transform:uppercase;flex:1;}
+.vault-close-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;line-height:1;}
+.vault-close-btn:hover{color:var(--text);}
+.vault-box-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.vault-box-body::-webkit-scrollbar{width:4px;}
+.vault-box-body::-webkit-scrollbar-thumb{background:var(--bord);border-radius:2px;}
+
+/* ── SAVE POPUP specifics ── */
+.vault-save-pw-preview{background:rgba(0,0,0,.5);border:1px solid rgba(34,197,94,.3);border-radius:3px;
+  padding:8px 12px;font-family:'Courier New',monospace;font-size:clamp(10px,.9vw,12px);
+  color:var(--ok);word-break:break-all;letter-spacing:1.5px;line-height:1.6;max-height:72px;overflow:hidden;}
+.vault-desc-input{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:3px;
+  color:var(--text);font-family:inherit;font-size:var(--sz-bdy);padding:8px 12px;
+  resize:none;height:58px;line-height:1.6;letter-spacing:.5px;transition:border-color .3s;}
+.vault-desc-input:focus{outline:none;border-color:var(--ok);}
+.vault-entropy-status{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-radius:3px;font-size:var(--sz-xs);letter-spacing:1px;}
+.vault-entropy-status.ok  {background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.25);color:var(--ok);}
+.vault-entropy-status.warn{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);color:var(--warn);}
+.vault-entropy-status.bad {background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);color:var(--danger);}
+.vault-save-btn{width:100%;padding:10px;border:1.5px solid var(--ok);border-radius:3px;
+  background:rgba(34,197,94,.14);color:var(--ok);font-family:inherit;font-size:var(--sz-bdy);
+  font-weight:bold;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.vault-save-btn:hover{background:rgba(34,197,94,.28);box-shadow:0 0 16px rgba(34,197,94,.2);}
+.vault-save-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ── LIBRARY specifics ── */
+.vault-lib-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 18px;
+  border-bottom:1px solid var(--bord);background:rgba(0,0,0,.25);}
+.vault-search{flex:1;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:3px;
+  color:var(--text);font-family:inherit;font-size:var(--sz-bdy);padding:5px 10px;letter-spacing:.5px;}
+.vault-search:focus{outline:none;border-color:var(--ok);}
+.vault-empty{text-align:center;padding:32px 0;color:var(--muted);font-size:var(--sz-sm);letter-spacing:2px;}
+.vault-entry{border:1px solid var(--bord);border-radius:4px;background:rgba(0,0,0,.25);overflow:hidden;
+  transition:border-color .2s;}
+.vault-entry:hover{border-color:rgba(34,197,94,.3);}
+.vault-entry-hdr{display:flex;align-items:center;gap:8px;padding:9px 12px;
+  background:rgba(0,0,0,.3);cursor:pointer;}
+.vault-entry-icon{font-size:14px;flex-shrink:0;}
+.vault-entry-desc{flex:1;font-size:var(--sz-bdy);color:var(--text);letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vault-entry-meta{font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;white-space:nowrap;flex-shrink:0;}
+.vault-entry-body{display:none;padding:10px 12px;border-top:1px solid var(--bord);
+  background:rgba(0,0,0,.15);}
+.vault-entry-body.open{display:block;}
+.vault-pw-field{background:rgba(0,0,0,.5);border:1px solid rgba(34,197,94,.25);border-radius:3px;
+  padding:7px 10px;font-family:'Courier New',monospace;font-size:clamp(10px,.9vw,13px);
+  color:var(--ok);word-break:break-all;letter-spacing:1.5px;line-height:1.6;margin-bottom:8px;
+  user-select:all;}
+.vault-entry-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.vault-act-btn{padding:4px 12px;border-radius:3px;font-family:inherit;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.vault-act-btn.reveal{border:1px solid var(--ok);color:var(--ok);background:transparent;}
+.vault-act-btn.reveal:hover{background:rgba(34,197,94,.15);}
+.vault-act-btn.copy  {border:1px solid var(--sdr0);color:var(--sdr0);background:transparent;}
+.vault-act-btn.copy:hover{background:rgba(56,189,248,.15);}
+.vault-act-btn.del   {border:1px solid var(--danger);color:var(--danger);background:transparent;}
+.vault-act-btn.del:hover{background:rgba(239,68,68,.15);}
+.vault-session-tag{font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;
+  border-radius:2px;white-space:nowrap;flex-shrink:0;}
+.vault-session-tag.live{border:1px solid rgba(34,197,94,.4);color:var(--ok);}
+.vault-session-tag.dead{border:1px solid rgba(255,255,255,.1);color:var(--muted);}
+.vault-arm-banner{padding:14px 16px;border:1px solid rgba(245,158,11,.3);border-radius:4px;
+  background:rgba(245,158,11,.05);color:var(--warn);font-size:var(--sz-sm);letter-spacing:.5px;
+  line-height:1.7;text-align:center;}
+.vault-arm-banner b{display:block;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;font-size:var(--sz-xs);}
+.vault-arm-banner-btn{margin-top:10px;padding:7px 24px;border:1px solid var(--warn);border-radius:3px;
+  background:rgba(245,158,11,.1);color:var(--warn);font-family:inherit;font-size:var(--sz-xs);
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.vault-arm-banner-btn:hover{background:rgba(245,158,11,.25);}
+.vault-stat-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bord);flex-shrink:0;}
+.vault-stat-cell{flex:1;text-align:center;}
+.vault-stat-val{font-size:clamp(15px,1.4vw,20px);font-weight:bold;color:var(--ok);letter-spacing:1px;}
+.vault-stat-lbl{font-size:var(--sz-xs);color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+
+/* ══════════════════════════════════════════════════════════
+   NEGENTROPY TAB — HMAC-SHA-256 DRBG Lifeboat
+   ══════════════════════════════════════════════════════════ */
+.tab-btn.tab-neg.active{border-color:var(--neg);color:var(--neg);
+  background:rgba(129,140,248,0.08);box-shadow:0 0 8px var(--negdim);}
+
+#tab-neg .main-grid{grid-template-columns:minmax(0,34%) minmax(0,1fr) minmax(0,30%);}
+
+/* Status grid inside left panel */
+.neg-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--bord);border-top:1px solid var(--bord);flex-shrink:0;}
+.neg-stat{background:var(--bg);padding:6px 8px;text-align:center;}
+.neg-sv{font-size:clamp(13px,1.2vw,17px);font-weight:bold;line-height:1;margin-bottom:3px;color:var(--neg);}
+.neg-sl{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.neg-fp{font-size:var(--sz-xs);letter-spacing:3px;font-family:'Courier New',monospace;color:var(--neg);opacity:.8;}
+
+/* Philosophy box */
+.neg-phil{flex-shrink:0;padding:8px 10px;border-top:1px solid var(--bord);
+  background:rgba(129,140,248,.04);font-size:var(--sz-xs);letter-spacing:.8px;
+  line-height:1.8;color:var(--muted);}
+.neg-phil b{color:var(--neg);letter-spacing:1px;}
+
+/* Algorithm info strip */
+.neg-algo{flex-shrink:0;padding:6px 10px;border-top:1px solid var(--bord);
+  display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.3);flex-wrap:wrap;}
+.neg-algo-tag{font-size:8px;letter-spacing:2px;text-transform:uppercase;
+  padding:2px 6px;border-radius:2px;white-space:nowrap;}
+.neg-algo-tag.nist{border:1px solid var(--neg);color:var(--neg);}
+.neg-algo-tag.seed{border:1px solid var(--ok);color:var(--ok);}
+.neg-algo-tag.inf {border:1px solid var(--sdr0);color:var(--sdr0);}
+
+/* Recamán canvas area */
+.neg-recaman{flex:1;min-height:80px;background:#02040a;position:relative;overflow:hidden;
+  border:1px solid var(--bord);border-radius:4px;}
+.neg-recaman canvas{display:block;width:100%;height:100%;}
+
+/* Byte stream mini-vis */
+.neg-bytevis{flex-shrink:0;height:100px;background:#010208;position:relative;overflow:hidden;
+  border:1px solid var(--bord);border-radius:4px;}
+.neg-bytevis canvas{display:block;width:100%;height:100%;}
+
+/* Seeding chain flow diagram */
+.neg-flow-wrap{flex-shrink:0;height:76px;background:#010208;position:relative;overflow:hidden;
+  border:1px solid var(--bord);border-radius:4px;}
+.neg-flow-wrap canvas{display:block;width:100%;}
+
+/* Stat context sub-label */
+.neg-stat-ctx{font-size:6px;letter-spacing:.3px;color:rgba(129,140,248,.3);margin-top:2px;line-height:1;}
+
+/* Right panel controls */
+.neg-ctrl-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;}
+.neg-ctrl-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.neg-lbl{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.neg-input{width:65px;background:rgba(0,0,0,.5);border:1px solid var(--bord);border-radius:3px;
+  color:var(--neg);font-family:inherit;font-size:var(--sz-bdy);padding:4px 8px;
+  text-align:center;-moz-appearance:textfield;}
+.neg-input::-webkit-outer-spin-button,.neg-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.neg-btn{padding:6px 16px;border:1px solid var(--neg);border-radius:3px;
+  background:rgba(129,140,248,.09);color:var(--neg);font-family:inherit;
+  font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.neg-btn:hover{background:rgba(129,140,248,.22);box-shadow:0 0 10px var(--negdim);}
+.neg-btn.primary{padding:7px 20px;font-size:var(--sz-bdy);font-weight:bold;
+  background:rgba(129,140,248,.18);border-width:1.5px;letter-spacing:3px;}
+.neg-btn.primary:hover{background:rgba(129,140,248,.32);box-shadow:0 0 14px rgba(129,140,248,.3);}
+.neg-btn.blend{border-color:var(--escher);color:var(--escher);background:rgba(192,132,252,.08);}
+.neg-btn.blend:hover{background:rgba(192,132,252,.2);box-shadow:0 0 10px rgba(192,132,252,.2);}
+.neg-out{background:rgba(0,0,0,.4);border:1px solid var(--bord);border-radius:3px;
+  padding:7px 10px;font-size:var(--sz-xs);letter-spacing:1.5px;color:var(--neg);
+  word-break:break-all;font-family:'Courier New',monospace;min-height:36px;
+  transition:border-color .4s;line-height:1.6;}
+.neg-mode-row{display:flex;gap:5px;flex-shrink:0;}
+.neg-mode-btn{flex:1;padding:5px 4px;border:1px solid var(--bord);border-radius:3px;
+  background:transparent;color:var(--muted);font-family:inherit;
+  font-size:8px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;
+  line-height:1.4;min-height:36px;}
+.neg-mode-btn.active{border-color:var(--neg);color:var(--neg);background:rgba(129,140,248,.12);}
+.neg-mode-btn.active.blend-mode{border-color:var(--escher);color:var(--escher);background:rgba(192,132,252,.1);}
+.neg-mode-btn:hover{border-color:rgba(129,140,248,.5);}
+.neg-section-hdr{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;
+  color:var(--neg);border-bottom:1px solid rgba(129,140,248,.2);padding-bottom:4px;opacity:.8;}
+.neg-warn{font-size:var(--sz-xs);letter-spacing:.5px;color:var(--warn);line-height:1.7;
+  padding:6px 8px;border:1px solid rgba(245,158,11,.25);border-radius:3px;background:rgba(245,158,11,.04);}
+.neg-seed-fp{font-size:clamp(10px,1vw,13px);letter-spacing:4px;font-family:'Courier New',monospace;
+  color:var(--neg);text-align:center;padding:6px 0;word-break:break-all;}
+
+/* Bottom bar for neg tab */
+#bottom-neg{flex-shrink:0;border-top:1px solid var(--bord);height:36px;padding:0 12px;
+  display:flex;align-items:center;gap:8px;overflow:hidden;}
+.neg-inf-badge{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
+  padding:2px 8px;border:1px solid var(--neg);border-radius:2px;color:var(--neg);
+  white-space:nowrap;flex-shrink:0;animation:negpulse 3s ease-in-out infinite;}
+@keyframes negpulse{0%,100%{opacity:1;box-shadow:none}50%{opacity:.7;box-shadow:0 0 8px var(--negdim);}}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div id="hdr">
+  <div id="hdr-left">
+    <h1>SOVEREIGN QRNG</h1>
+    <div class="tagline">Phoenix · Sovereign Entropy · Free For Humanity</div>
+  </div>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="near">NEAR QUANTUM</button>
+    <button class="tab-btn tab-true" data-tab="true">TRUE QUANTUM</button>
+    <button class="tab-btn tab-tools" data-tab="tools">TOOLS</button>
+    <button class="tab-btn tab-neg" data-tab="neg">NEGENTROPY</button>
+    <button class="tab-btn tab-intel" data-tab="intel">INTEL</button>
+  </nav>
+
+  <div id="hdr-badges">
+    <div id="sig-bars" title="Source signal: CAM · SDR0 · SDR1 · CPU · AUDIO">
+      <div class="sig-bar" id="sig-cam"   data-src="cam"></div>
+      <div class="sig-bar" id="sig-sdr0"  data-src="sdr0"></div>
+      <div class="sig-bar" id="sig-sdr1"  data-src="sdr1"></div>
+      <div class="sig-bar" id="sig-cpu"   data-src="cpu"></div>
+      <div class="sig-bar" id="sig-audio" data-src="audio"></div>
+    </div>
+    <span id="src-count" style="font-size:var(--sz-xs);letter-spacing:2px;color:var(--muted);white-space:nowrap">
+      <span id="src-n">0</span>/5 LIVE
+    </span>
+  </div>
+
+  <div id="hdr-right">
+    <div id="clock">--:--:--</div>
+    <div id="total-bps-hdr">— b/s</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     NEAR QUANTUM TAB
+══════════════════════════════════════════════════════════ -->
+<div id="tab-near" class="tab-content active">
+
+  <div class="main-grid">
+
+    <!-- LEFT: Multi-camera stack (scrollable, up to 50 cams) -->
+    <div class="panel" id="cam-panel" style="overflow:hidden;">
+      <div class="pbar">
+        <div class="dot" id="cam-dot"></div>
+        <span class="ptitle" style="color:var(--accent)">CAMERAS</span>
+        <span class="badge dim" id="cam-badge">WAITING</span>
+        <span style="margin-left:auto;font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;" id="cam-count">—</span>
+      </div>
+      <!-- Scrollable camera list — each card full aspect ratio -->
+      <div class="cam-stack" id="cam-stack">
+        <!-- CAM-A default card (built-in, always rendered) -->
+        <div class="cam-card cam-primary" id="cam-card-0" onclick="setPrimaryCam(0)">
+          <div class="cam-card-bar">
+            <div class="sdot" id="cam-sdot-0" data-src="cam"></div>
+            <span class="cam-card-name" style="color:var(--accent)">CAM-A · HP TrueVision</span>
+            <span class="cam-card-bdg" id="cam-card-bdg-0">WAITING</span>
+          </div>
+          <div class="cam-feed">
+            <img id="feed-img" src="http://127.0.0.1:8090/stream/0.mjpeg" alt="">
+            <div class="cam-feed-tag">CMOS · PHOTON SHOT NOISE · RGB LSB</div>
+            <div class="cam-offline-ov" id="feed-offline">
+              <span style="font-size:18px;color:var(--accent)">◎</span>
+              <span style="letter-spacing:2px;font-size:var(--sz-xs)">CAM-A Offline</span>
+              <span style="font-size:var(--sz-xs);color:#374151">webcam_server.py :8090</span>
+            </div>
+          </div>
+        </div>
+        <!-- Additional cameras appended dynamically by initCamStack() -->
+      </div>
+      <!-- Fixed aggregate stats below the scroll area -->
+      <div class="cam-stats">
+        <div class="stat"><div class="sv cn" id="s-bps">—</div><div class="sl">Total b/s</div></div>
+        <div class="stat"><div class="sv bok" id="s-bal">—</div><div class="sl" id="s-balst">Balance</div></div>
+      </div>
+      <div class="cam-sub">
+        <div class="sub-cell"><div class="sv2 cn" id="s-cbps">—</div><div class="sl2">Cam b/s</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--muted)" id="s-fps">—</div><div class="sl2">FPS</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="s-chunks">—</div><div class="sl2">Chunks</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="s-gb">—</div><div class="sl2">GB</div></div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Lorenz (top) + Escher (bottom) -->
+    <div class="mid-col">
+      <!-- Top: Lorenz attractor -->
+      <div class="panel glow-near" style="flex:1;min-height:0;">
+        <div class="pbar">
+          <div class="dot live-near"></div>
+          <span class="ptitle" style="color:var(--accent)">LORENZ ATTRACTOR</span>
+          <span class="psub">Chaos · Entropy · Divergence</span>
+          <span class="badge" style="border-color:var(--accent);color:var(--accent)">LIVE</span>
+        </div>
+        <div class="canvas-info">
+          <span style="color:#c084fc">σ=10&nbsp;ρ=28&nbsp;β=8/3</span>
+          <span style="color:#f59e0b">λ₁≈+0.906 CHAOTIC</span>
+          <span style="color:rgba(0,212,255,0.45)">3D ORBIT</span>
+          <span style="color:#22c55e;margin-left:auto" id="lorenz-traj">TRAJ:1</span>
+        </div>
+        <div class="math-wrap">
+          <canvas id="math-canvas"></canvas>
+        </div>
+      </div>
+      <!-- Bottom: Escher 6-pass -->
+      <div class="panel glow-escher" style="flex:1;min-height:0;">
+        <div class="pbar">
+          <div class="dot live-escher"></div>
+          <span class="ptitle" style="color:var(--escher)">ESCHER CASCADE</span>
+          <span class="psub">6-Pass · Fold·Rotate·Fall·Braid·Scatter·Seal</span>
+          <span class="badge" style="border-color:var(--escher);color:var(--escher)">LIVE</span>
+        </div>
+        <div class="canvas-info">
+          <span style="color:#c084fc">FOLD·ROTATE·FALL·BRAID·SCATTER·SEAL</span>
+          <div class="cplx-group">
+            <span style="color:rgba(0,212,255,0.45)">CPLX</span>
+            <div class="cplx-track"><div class="cplx-fill" id="cplx-bar"></div></div>
+            <span style="color:#00d4ff;white-space:nowrap" id="cplx-val">0.00/10</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:3px 10px;border-bottom:1px solid var(--bord);background:rgba(0,0,0,.3);">
+          <span style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);">ODE MODE</span>
+          <button class="ode-mode-btn active" id="ode-btn-0" onclick="setOdeMode(0)">HEXA</button>
+          <button class="ode-mode-btn" id="ode-btn-1" onclick="setOdeMode(1)">SPIRAL</button>
+          <button class="ode-mode-btn" id="ode-btn-2" onclick="setOdeMode(2)">WAVE</button>
+        </div>
+        <div class="escher-split">
+          <div class="escher-disk-wrap"><canvas id="escher-canvas"></canvas></div>
+          <div class="escher-ode-wrap"><canvas id="escher-ode-canvas"></canvas></div>
+        </div>
+        <div id="quality-strip">
+          <span class="ql">SHANNON H</span>
+          <div class="qbar-track"><div class="qbar-fill" id="qbar" style="width:50%"></div></div>
+          <span class="qval" id="qval">—</span>
+        </div>
+        <div id="spark-wrap"><canvas id="spark-canvas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Connected sources + hardware catalog -->
+    <div class="panel">
+      <div class="pbar">
+        <span class="ptitle" style="color:var(--text)">SOURCES</span>
+        <span class="badge dim" style="border-color:var(--ok);color:var(--ok)" id="src-badge">0 / 5</span>
+      </div>
+      <div class="src-list" id="src-list"></div>
+
+      <!-- Hardware catalog -->
+      <div class="hw-catalog">
+        <div class="hw-header">AVAILABLE HARDWARE</div>
+        <!-- SDR dongles -->
+        <div class="hw-row" id="hw-nooelec"><div class="hw-dot" id="hdot-nooelec"></div><span class="src-name" style="color:var(--sdr0)">NooElec NESDR SMArt</span><span class="hw-price">~$25</span><span class="hw-status available" id="hst-nooelec">AVAILABLE</span></div>
+        <div class="hw-row" id="hw-rtlv3"><div class="hw-dot" id="hdot-rtlv3"></div><span class="src-name" style="color:var(--sdr0)">RTL-SDR Blog V3</span><span class="hw-price">~$30</span><span class="hw-status available" id="hst-rtlv3">AVAILABLE</span></div>
+        <div class="hw-row" id="hw-rtlv4"><div class="hw-dot" id="hdot-rtlv4"></div><span class="src-name" style="color:var(--sdr0)">RTL-SDR Blog V4</span><span class="hw-price">~$40</span><span class="hw-status available" id="hst-rtlv4">AVAILABLE</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--sdr1)">HackRF One</span><span class="hw-price">~$300</span><span class="hw-status exotic">ADVANCED</span></div>
+        <!-- Cameras -->
+        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--accent)">Built-in Webcam (CAM-A)</span><span class="hw-price">FREE</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--accent)">USB Webcam (any)</span><span class="hw-price">~$15</span><span class="hw-status available">AVAILABLE</span></div>
+        <!-- Audio -->
+        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--audio)">Laptop Mic (built-in)</span><span class="hw-price">FREE</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--audio)">USB Soundcard</span><span class="hw-price">~$8</span><span class="hw-status available">AVAILABLE</span></div>
+        <!-- Exotic -->
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Geiger Counter</span><span class="hw-price">~$80</span><span class="hw-status exotic">EXOTIC</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Lava Lamp + Cam</span><span class="hw-price">~$20</span><span class="hw-status exotic">EXOTIC</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Avalanche Noise Diode</span><span class="hw-price">~$15</span><span class="hw-status exotic">EXOTIC</span></div>
+      </div>
+      <!-- SYSTEM ADVISOR -->
+      <div id="advisor-panel">
+        <div class="adv-header">
+          <div class="adv-indicator" id="adv-dot"></div>
+          <span class="adv-title">SYSTEM ADVISOR</span>
+          <span class="adv-badge" id="adv-badge">STARTING</span>
+          <span class="adv-ai-tag offline" id="adv-ai-tag" title="Ollama offline — using static advisor">AI</span>
+        </div>
+        <div id="adv-body" class="adv-body"></div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <div id="bottom">
+    <div id="purge-lock">
+      <span class="purge-lbl">PURGE</span>
+      <label class="lock-sw" title="Lock I"><input type="checkbox" id="lock1" onchange="checkPurgeLocks()"><div class="lock-track"></div></label>
+      <label class="lock-sw" title="Lock II"><input type="checkbox" id="lock2" onchange="checkPurgeLocks()"><div class="lock-track"></div></label>
+      <label class="lock-sw" title="Lock III"><input type="checkbox" id="lock3" onchange="checkPurgeLocks()"><div class="lock-track"></div></label>
+      <button id="purge-btn" disabled onclick="doPurge()">⚠ PURGE</button>
+    </div>
+    <div class="vault-row">
+      <span class="vl">NEAR VAULT</span>
+      <div class="vtrack"><div class="vfill" id="vbar" style="width:0%"></div></div>
+      <span class="vpct" id="vpct">0.0%</span>
+      <span class="vgb" id="vgb" style="display:none"></span>
+    </div>
+  </div>
+
+</div><!-- /tab-near -->
+
+<!-- ══════════════════════════════════════════════════════════
+     TRUE QUANTUM TAB
+══════════════════════════════════════════════════════════ -->
+<div id="tab-true" class="tab-content true-tab">
+  <div class="main-grid">
+    <!-- LEFT: Camera (laser shot) -->
+    <div class="panel" id="true-cam-panel">
+      <div class="pbar">
+        <div class="dot" id="true-cam-dot"></div>
+        <span class="ptitle" style="color:var(--true)">LASER CAMERAS</span>
+        <span class="badge dim" id="true-cam-badge">OFFLINE</span>
+        <span style="margin-left:auto;font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;" id="true-cam-count">—</span>
+      </div>
+      <div class="cam-stack" id="true-cam-stack">
+        <div class="cam-card cam-primary" id="true-cam-card-0" onclick="setTruePrimaryCam(0)">
+          <div class="cam-card-bar">
+            <div class="sdot" id="true-cam-sdot-0" data-src="cam"></div>
+            <span class="cam-card-name" style="color:var(--true)">CAM-B · Laser Shot</span>
+            <span class="cam-card-bdg" id="true-cam-card-bdg-0">OFFLINE</span>
+          </div>
+          <div class="cam-feed">
+            <img id="true-feed-img" src="http://127.0.0.1:8090/stream/1.mjpeg" alt="">
+            <div class="cam-feed-tag" style="color:rgba(245,158,11,.5)">PHOTON SHOT NOISE · LASER · QUANTUM</div>
+            <div class="cam-offline-ov" id="true-feed-offline">
+              <span style="font-size:18px;color:var(--true)">◎</span>
+              <span style="letter-spacing:2px;font-size:var(--sz-xs)">CAM-B Offline</span>
+              <span style="font-size:var(--sz-xs);color:#374151">Connect USB webcam + laser</span>
+            </div>
+          </div>
+        </div>
+        <!-- Additional laser cameras appended dynamically by initTrueCamStack() -->
+      </div>
+      <div class="cam-stats">
+        <div class="stat"><div class="sv" style="color:var(--true);text-shadow:0 0 8px rgba(245,158,11,.4)" id="t-bps">—</div><div class="sl">Total b/s</div></div>
+        <div class="stat"><div class="sv bok" id="t-bal">—</div><div class="sl">Balance</div></div>
+      </div>
+      <div class="cam-sub">
+        <div class="sub-cell"><div class="sv2" style="color:var(--true)" id="t-cbps">—</div><div class="sl2">Cam b/s</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--muted)" id="t-fps">—</div><div class="sl2">FPS</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="t-chunks">—</div><div class="sl2">Chunks</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="t-gb">—</div><div class="sl2">GB</div></div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: same viz driven by true entropy -->
+    <div class="mid-col">
+      <div class="panel glow-true" style="flex:1;min-height:0;">
+        <div class="pbar">
+          <div class="dot" id="true-lorenz-dot"></div>
+          <span class="ptitle" style="color:var(--true)">LORENZ — TRUE QUANTUM</span>
+          <span class="psub">Photon Shot Noise → Chaos</span>
+          <span class="badge dim" id="true-lorenz-badge" style="border-color:var(--warn);color:var(--warn)">OFFLINE</span>
+        </div>
+        <div class="canvas-info">
+          <span style="color:#c084fc">σ=10&nbsp;ρ=28&nbsp;β=8/3</span>
+          <span style="color:#f59e0b">λ₁≈+0.906 CHAOTIC</span>
+          <span style="color:rgba(245,158,11,0.45)">3D ORBIT</span>
+          <span style="color:#f59e0b;margin-left:auto" id="lorenz-traj-true">TRAJ:1</span>
+        </div>
+        <div class="math-wrap">
+          <canvas id="math-canvas-true"></canvas>
+        </div>
+      </div>
+      <div class="panel glow-escher" style="flex:1;min-height:0;">
+        <div class="pbar">
+          <div class="dot" id="true-escher-dot"></div>
+          <span class="ptitle" style="color:var(--escher)">ESCHER CASCADE — TRUE QUANTUM</span>
+          <span class="psub">Quantum Whitening · 6-Pass</span>
+          <span class="badge dim" id="true-escher-badge" style="border-color:var(--warn);color:var(--warn)">OFFLINE</span>
+        </div>
+        <div class="canvas-info">
+          <span style="color:#c084fc">FOLD·ROTATE·FALL·BRAID·SCATTER·SEAL</span>
+          <div class="cplx-group">
+            <span style="color:rgba(245,158,11,0.45)">CPLX</span>
+            <div class="cplx-track"><div class="cplx-fill" id="cplx-bar-true"></div></div>
+            <span style="color:var(--true);white-space:nowrap" id="cplx-val-true">0.00/10</span>
+          </div>
+        </div>
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:3px 10px;border-bottom:1px solid var(--bord);background:rgba(0,0,0,.3);">
+          <span style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);">ODE MODE</span>
+          <button class="ode-mode-btn active" id="ode-t-0" onclick="setOdeMode(0)">HEXA</button>
+          <button class="ode-mode-btn" id="ode-t-1" onclick="setOdeMode(1)">SPIRAL</button>
+          <button class="ode-mode-btn" id="ode-t-2" onclick="setOdeMode(2)">WAVE</button>
+        </div>
+        <div class="escher-split">
+          <div class="escher-disk-wrap"><canvas id="escher-canvas-true"></canvas></div>
+          <div class="escher-ode-wrap"><canvas id="escher-ode-canvas-true"></canvas></div>
+        </div>
+        <div id="quality-strip-true">
+          <span class="ql">SHANNON H</span>
+          <div class="qbar-track"><div class="qbar-fill" id="qbar-true" style="width:50%"></div></div>
+          <span class="qval" id="qval-true">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: True sources -->
+    <div class="panel">
+      <div class="pbar">
+        <span class="ptitle" style="color:var(--true)">TRUE SOURCES</span>
+        <span class="badge dim" style="border-color:var(--true);color:var(--true)" id="true-src-badge">0 / 1</span>
+      </div>
+      <div class="src-list">
+        <div class="src-row">
+          <div class="sdot" id="td-cam" data-src="cam"></div>
+          <span class="src-name" style="color:var(--true)">LASER CAM · CAM-B</span>
+          <span class="src-bps" id="tb-cam">—</span>
+          <span class="src-status" id="tst-cam">OFFLINE</span>
+        </div>
+      </div>
+      <div class="hw-catalog">
+        <div class="hw-header">TRUE QUANTUM HARDWARE</div>
+        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--true)">USB Webcam · CAM-B</span><span class="hw-price">~$15</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--true)">Laser Pointer 650nm</span><span class="hw-price">~$5</span><span class="hw-status available">NEEDED</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--true)">Laser Diode Module</span><span class="hw-price">~$8</span><span class="hw-status available">BETTER</span></div>
+        <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Single Photon Detector</span><span class="hw-price">~$500+</span><span class="hw-status exotic">RESEARCH</span></div>
+        <div class="hw-header" style="margin-top:4px;">SETUP GUIDE</div>
+        <div style="padding:10px 12px;font-size:var(--sz-sm);line-height:1.7;color:var(--muted);">
+          1. Aim laser at webcam lens<br>
+          2. Keep room dark<br>
+          3. Run <code style="color:var(--sdr0)">python true_entropy.py</code><br>
+          4. Laser shot noise → photon counting → quantum randomness
+        </div>
+      </div>
+      <div style="padding:8px 10px;border-top:1px solid var(--bord);background:rgba(0,0,0,.3);">
+        <div style="font-size:var(--sz-xs);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">TRUE VAULT</div>
+        <div style="font-size:var(--sz-sm);color:var(--true)" id="t-vault-info">0.0000 / 10.00 GB</div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid true -->
+
+  <div id="bottom-true">
+    <div id="true-engine-status">
+      <span class="purge-lbl" style="color:var(--warn)">ENGINE</span>
+      <span id="true-eng-badge" style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);border-radius:2px;padding:1px 6px;white-space:nowrap;">OFFLINE</span>
+      <span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;white-space:nowrap;">· run true_entropy.py</span>
+    </div>
+    <div class="vault-row">
+      <span class="vl" style="color:var(--true)">TRUE VAULT</span>
+      <div class="vtrack"><div class="vfill" id="true-vbar" style="width:0%;background:linear-gradient(90deg,#221100,#664400,var(--true));box-shadow:2px 0 8px var(--true)"></div></div>
+      <span class="vpct" style="color:var(--true)" id="true-vpct">0.0%</span>
+      <span class="vgb" id="true-vgb" style="display:none"></span>
+    </div>
+  </div>
+</div><!-- /tab-true -->
+
+<!-- ══════════════════════════════════════════════════════════
+     INTEL TAB
+══════════════════════════════════════════════════════════ -->
+<div id="tab-intel" class="tab-content">
+  <div class="intel-body">
+
+    <!-- ── SYSTEM STATUS — Inverted Pyramid: show state before explanation ── -->
+    <div class="intel-hero">
+      <div class="intel-hero-card">
+        <div class="intel-hero-label">Entropy Rate</div>
+        <div class="intel-hero-val" style="color:var(--accent)" id="ih-bps">—</div>
+        <div class="intel-hero-sub">NEAR QUANTUM</div>
+      </div>
+      <div class="intel-hero-card">
+        <div class="intel-hero-label">Active Sources</div>
+        <div class="intel-hero-val" style="color:var(--ok)" id="ih-srcs">—</div>
+        <div class="intel-hero-sub">OF 5 POSSIBLE</div>
+      </div>
+      <div class="intel-hero-card">
+        <div class="intel-hero-label">Vault Fill</div>
+        <div class="intel-hero-val" style="color:var(--escher)" id="ih-vault">—</div>
+        <div class="intel-hero-sub">NEAR 5 GB</div>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr open" onclick="toggleSection(this)">
+        <h2 style="color:var(--accent)">◈ WHAT IS SOVEREIGN QRNG?</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body open">
+        <p>Your computer is turning <b style="color:var(--accent)">physical noise from real hardware</b> into cryptographic-grade random numbers — right now, with no cloud connection required.</p>
+        <p>Most software uses mathematical formulas to fake randomness. If an attacker knows the formula, they can predict every number it generates. SOVEREIGN QRNG measures <b>real physical events</b> that not even the laws of physics allow anyone to predict in advance.</p>
+        <div class="intel-card-grid">
+          <div class="intel-kcard">
+            <div class="intel-kcard-hdr" style="color:var(--ok)">NEAR QUANTUM</div>
+            <div class="intel-kcard-body">Your webcam, radio dongle, CPU clock jitter, and microphone generate random thermal noise continuously. We harvest entropy from all four simultaneously and mix them together.</div>
+          </div>
+          <div class="intel-kcard">
+            <div class="intel-kcard-hdr" style="color:var(--true)">TRUE QUANTUM</div>
+            <div class="intel-kcard-body">A laser pointed at a USB webcam generates <b>photon shot noise</b> — randomness from quantum mechanics itself. The exact arrival time of each photon is fundamentally unpredictable, not just hard to predict.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--danger)">◈ WHY YOUR RANDOMNESS MATTERS</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <p>Every encrypted connection you make — HTTPS, SSH, VPN — starts by generating a random secret key. <b style="color:var(--danger)">If that number can be predicted, your encryption is worthless.</b> An attacker who guesses your key can decrypt everything, including past traffic they recorded.</p>
+        <div class="intel-risk-list">
+          <div class="intel-risk"><span class="risk-icon" style="color:var(--ok)">✓</span><span><b style="color:var(--ok)">Quantum entropy</b> — Even with infinite computing power, the next number is physically impossible to predict. Proven by quantum mechanics.</span></div>
+          <div class="intel-risk"><span class="risk-icon" style="color:var(--warn)">~</span><span><b style="color:var(--warn)">OS entropy</b> (os.urandom) — Good in practice. Relies on hardware event collection. Can be weak on fresh systems or embedded devices with little activity.</span></div>
+          <div class="intel-risk"><span class="risk-icon" style="color:var(--danger)">✗</span><span><b style="color:var(--danger)">Math-based PRNG</b> (rand(), Math.random()) — Never use for security. Entirely predictable from any known output.</span></div>
+          <div class="intel-risk"><span class="risk-icon" style="color:var(--danger)">✗</span><span><b style="color:var(--danger)">Cloud RNG APIs</b> — You are trusting the provider completely. A backdoored provider gives you fake randomness and you cannot tell.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--escher)">◈ HOW YOUR SOURCES WORK</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <div class="src-explain-grid">
+          <div class="src-explain-card">
+            <div class="src-explain-hdr" style="color:var(--ok)">WEBCAM · CAM-A</div>
+            <div class="src-explain-body"><p>Your camera sensor contains millions of light-detecting wells. Even in darkness, <b>stray photons and electron thermal motion</b> create random noise in every pixel. We grab the least-significant bit of each colour channel — the noisiest part — and extract the randomness from the difference between frames.</p></div>
+            <div class="src-explain-rate">~3,000 bit/s · always available · no extra hardware</div>
+          </div>
+          <div class="src-explain-card">
+            <div class="src-explain-hdr" style="color:var(--sdr0)">RTL-SDR RADIO</div>
+            <div class="src-explain-body"><p>A $25 USB radio dongle contains an ADC that samples the air 256,000 times per second. Tuned to a quiet frequency, <b>all it picks up is thermal Johnson noise</b> — the random motion of electrons in the antenna. Impossible to predict or reproduce.</p></div>
+            <div class="src-explain-rate">~8,000 bit/s · best near-quantum source available</div>
+          </div>
+          <div class="src-explain-card">
+            <div class="src-explain-hdr" style="color:#a78bfa">CPU JITTER</div>
+            <div class="src-explain-body"><p>Your processor's clock is not perfectly stable. Cache misses, interrupt handling, and pipeline stalls cause <b>sub-nanosecond timing variations</b> that are unpredictable. We measure these with a high-resolution timer and XOR with Windows CNG (BCryptGenRandom).</p></div>
+            <div class="src-explain-rate">~8,000 bit/s · pure software · no hardware needed</div>
+          </div>
+          <div class="src-explain-card">
+            <div class="src-explain-hdr" style="color:#34d399">MICROPHONE ADC</div>
+            <div class="src-explain-body"><p>Your microphone amplifier generates <b>thermal noise</b> even in silence — electrons jiggling due to heat. At 44.1 kHz, the least-significant bits of every audio sample contain this pure physical noise. Slow but always present.</p></div>
+            <div class="src-explain-rate">~700 bit/s · slow but always available</div>
+          </div>
+          <div class="src-explain-card" style="border-color:rgba(245,158,11,.3)">
+            <div class="src-explain-hdr" style="color:var(--true)">LASER CAM · TRUE QUANTUM</div>
+            <div class="src-explain-body"><p>Photons from a laser arrive at the camera sensor one by one. Quantum mechanics makes their <b>exact arrival times fundamentally unknowable</b> — not just hard to predict, but provably impossible by the laws of physics. This is Poisson shot noise: the purest randomness in the universe.</p></div>
+            <div class="src-explain-rate">~6,000 bit/s · TRUE quantum mechanical</div>
+          </div>
+          <div class="src-explain-card">
+            <div class="src-explain-hdr" style="color:var(--escher)">ESCHER-6 CASCADE</div>
+            <div class="src-explain-body"><p>All sources are mixed through 6 passes: Fold → Rotate → Fall → Braid → Scatter → SHA-256 Seal. This <b>whitens any bias</b> (making the output perfectly uniform) and ensures no single weak source can compromise the final output.</p></div>
+            <div class="src-explain-rate">output: cryptographic-grade uniform bytes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--warn)">◈ HARDWARE CATALOG</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <table class="hw-table">
+          <tr><th>Device</th><th>Type</th><th>Cost</th><th>Entropy/s</th><th>Notes</th></tr>
+          <tr><td>Built-in laptop webcam</td><td>Near QM</td><td>FREE</td><td>~3,000 b/s</td><td>Always available — baseline source</td></tr>
+          <tr><td>NooElec NESDR SMArt XTR<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$25</td><td>~8,000 b/s</td><td>Best value. Plug in + Zadig libusbK driver</td></tr>
+          <tr><td>RTL-SDR Blog V3/V4<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$30–40</td><td>~8,000 b/s</td><td>Metal case, direct sampling. Also good.</td></tr>
+          <tr><td>HackRF One<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$300</td><td>~20,000 b/s</td><td>Full duplex, 1 MHz–6 GHz. Excellent if you have one.</td></tr>
+          <tr><td>USB Webcam (any)<span class="tag-q">CAM</span></td><td>Near QM</td><td>~$15</td><td>~3,000 b/s</td><td>Extra camera source, or use for laser shot (TRUE)</td></tr>
+          <tr><td>USB Soundcard (PCM2902)</td><td>Near QM</td><td>~$8</td><td>~700 b/s</td><td>Cleaner than built-in mic. Lower noise floor.</td></tr>
+          <tr><td>Laser pointer 650nm + USB webcam<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$20</td><td>~6,000 b/s</td><td>Point laser at webcam in dark room. Quantum shot noise.</td></tr>
+          <tr><td>Laser diode module<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$8</td><td>~8,000 b/s</td><td>More stable beam than a pointer. Better entropy rate.</td></tr>
+          <tr><td>Avalanche noise diode</td><td>Exotic</td><td>~$15</td><td>~50,000 b/s</td><td>Zener in reverse breakdown. Very high rate.</td></tr>
+          <tr><td>Geiger counter</td><td>Exotic</td><td>~$80</td><td>~200 b/s</td><td>Nuclear decay = true QM. Very slow but pure.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--ok)">◈ QUICK START</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <h3>INSTALL</h3>
+        <ol class="intel-steps">
+          <li>Install Python 3.10+ from <code>python.org</code></li>
+          <li>Run: <code>pip install Pillow opencv-python sounddevice pyaudio</code></li>
+          <li>Double-click <code>NEAR QUANTUM.lnk</code> on Desktop</li>
+          <li>Dashboard opens at <code>http://127.0.0.1:8888/near</code></li>
+        </ol>
+        <h3>ADD RTL-SDR RADIO DONGLE</h3>
+        <ol class="intel-steps">
+          <li>Plug in the RTL-SDR USB dongle</li>
+          <li>Download and run <b>Zadig</b> from <code>zadig.akeo.ie</code></li>
+          <li>In Zadig: Options → List All Devices</li>
+          <li>Select <b>Bulk-In, Interface (Interface 0)</b></li>
+          <li>Choose driver: <b style="color:var(--ok)">libusbK</b> — <b style="color:var(--danger)">NOT WinUSB</b> — then click Install Driver</li>
+          <li>NEAR engine detects the dongle within 10 seconds automatically</li>
+        </ol>
+        <h3>ADD LASER CAM (TRUE QUANTUM)</h3>
+        <ol class="intel-steps">
+          <li>Point a laser pointer at a USB webcam lens in a dark room</li>
+          <li>Plug in the USB webcam — it appears as CAM-B in the TRUE QUANTUM tab</li>
+          <li>Run <code>python true_entropy.py</code> to start the TRUE engine</li>
+        </ol>
+        <h3>AI ADVISOR (AUTOMATIC HELP)</h3>
+        <ol class="intel-steps">
+          <li>Install Ollama from <code>ollama.com</code></li>
+          <li>Run in a terminal: <code>ollama pull gemma2:2b</code></li>
+          <li>The SYSTEM ADVISOR panel activates automatically — no other setup needed</li>
+          <li>When anything goes wrong, the advisor diagnoses it and shows fix steps instantly</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--danger)">◈ TROUBLESHOOTING</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <div id="wiz-container"></div>
+        <div class="intel-fix-grid">
+          <div class="intel-fix">
+            <div class="intel-fix-prob">RTL-SDR shows OFFLINE</div>
+            <ol class="intel-fix-steps">
+              <li>Check USB cable and try a different port</li>
+              <li>Open Zadig → install <b>libusbK</b> driver (not WinUSB)</li>
+              <li>Disable USB selective suspend in Device Manager</li>
+              <li>Restart near_entropy.py</li>
+            </ol>
+          </div>
+          <div class="intel-fix">
+            <div class="intel-fix-prob">RTL-SDR drops every ~10 seconds</div>
+            <ol class="intel-fix-steps">
+              <li>This is Windows USB selective suspend cutting power</li>
+              <li>Device Manager → Universal Serial Bus → USB Root Hub</li>
+              <li>Properties → Power Management → uncheck "Allow computer to turn off this device"</li>
+              <li>Repeat for every root hub listed</li>
+            </ol>
+          </div>
+          <div class="intel-fix">
+            <div class="intel-fix-prob">Camera shows OFFLINE</div>
+            <ol class="intel-fix-steps">
+              <li>Verify webcam_server.py is running on port 8090</li>
+              <li>Try replugging the USB camera</li>
+              <li>Run: <code>python webcam_server.py</code></li>
+            </ol>
+          </div>
+          <div class="intel-fix">
+            <div class="intel-fix-prob">Audio shows OFFLINE</div>
+            <ol class="intel-fix-steps">
+              <li>Windows Settings → Sound → check microphone is not muted</li>
+              <li>Windows Settings → Privacy → Microphone → allow app access</li>
+              <li>Restart near_entropy.py</li>
+            </ol>
+          </div>
+          <div class="intel-fix">
+            <div class="intel-fix-prob">Entropy rate is very low</div>
+            <ol class="intel-fix-steps">
+              <li>Verify all 4 sources show LIVE in the NEAR QUANTUM tab</li>
+              <li>RTL-SDR gain should be 29 dB — check near_entropy.py</li>
+              <li>Move SDR antenna away from USB 3.0 cables (cause interference)</li>
+            </ol>
+          </div>
+          <div class="intel-fix">
+            <div class="intel-fix-prob">Vault is not filling</div>
+            <ol class="intel-fix-steps">
+              <li>Check <code>C:\QRNG_Pool\</code> has free disk space</li>
+              <li>Verify near_entropy.py is running on port 8766</li>
+              <li>Check near_offset.txt contains a plain number (not corrupted)</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intel-section">
+      <div class="intel-sec-hdr" onclick="toggleSection(this)">
+        <h2 style="color:var(--escher)">◈ API REFERENCE</h2><span class="chevron">▼</span>
+      </div>
+      <div class="intel-sec-body">
+        <table class="hw-table">
+          <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+          <tr><td><code>/api/near</code></td><td>GET</td><td>Near entropy engine live stats JSON</td></tr>
+          <tr><td><code>/api/true</code></td><td>GET</td><td>True entropy engine live stats JSON</td></tr>
+          <tr><td><code>/api/bytes?n=N</code></td><td>GET</td><td>N raw entropy bytes as hex (max 4096)</td></tr>
+          <tr><td><code>/api/purge_near</code></td><td>POST</td><td>Zero and reset the NEAR vault (triple-lock required)</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /intel-body -->
+</div><!-- /tab-intel -->
+
+<!-- ══════════════════════════════════════════════════════════
+     SOVEREIGN TOOLS TAB
+══════════════════════════════════════════════════════════ -->
+<div id="tab-tools" class="tab-content" style="flex-direction:column;">
+  <!-- ── SOVEREIGN VAULT HEADER ── -->
+  <div class="vault-hdr">
+    <div class="vault-dot sealed" id="vlt-dot"></div>
+    <span class="vault-lbl sealed" id="vlt-lbl">VAULT SEALED</span>
+    <div class="vault-hdr-sep"></div>
+    <div class="vault-ebar-wrap">
+      <span class="vault-ebar-lbl">ENTROPY</span>
+      <div class="vault-ebar-track"><div class="vault-ebar-fill" id="vlt-ebar" style="width:0%"></div></div>
+      <span class="vault-ebar-pct" id="vlt-epct">0.00%</span>
+    </div>
+    <div class="vault-hdr-sep"></div>
+    <span class="vault-count" id="vlt-count">0 entries</span>
+    <button class="vault-hdr-btn arm sealed" id="vlt-arm-btn" onclick="vaultArm()">⚡ ARM VAULT</button>
+    <button class="vault-hdr-btn open sealed" id="vlt-lib-btn" onclick="openVaultLibrary()">📚 LIBRARY</button>
+  </div>
+  <div class="tools-body">
+
+    <!-- Password Generator -->
+    <div class="tool-card">
+      <div class="tool-title">⚡ ENTROPY PASSWORD</div>
+      <div class="tool-desc">Cryptographic password using browser WebCrypto API. Rejection-sampled for perfect character distribution — no bias.</div>
+      <div class="tool-row">
+        <span class="tool-label">LENGTH</span>
+        <input type="range" class="tool-slider" id="pw-len" min="8" max="64" value="24">
+        <span class="tool-label" id="pw-len-val">24</span>
+      </div>
+      <div class="tool-check-row">
+        <label class="tool-chk"><input type="checkbox" id="pw-upper" checked> A-Z</label>
+        <label class="tool-chk"><input type="checkbox" id="pw-nums" checked> 0-9</label>
+        <label class="tool-chk"><input type="checkbox" id="pw-sym" checked> !@#</label>
+        <label class="tool-chk"><input type="checkbox" id="pw-safe"> URL-safe</label>
+      </div>
+      <div class="tool-output" id="pw-output">— click GENERATE —</div>
+      <div class="tool-row">
+        <button class="tool-btn generate" onclick="genPassword()">⚡ GENERATE</button>
+        <button class="tool-btn copy-btn" onclick="copyTool('pw-output',this)">COPY</button>
+        <button class="tool-btn vault-save" id="pw-vault-btn" onclick="openVaultSave('pw-output','PASSWORD')" disabled title="Arm vault to save">🔒 SAVE</button>
+        <span class="tool-label" id="pw-bits" style="color:var(--ok);"></span>
+      </div>
+    </div>
+
+    <!-- UUID Generator -->
+    <div class="tool-card">
+      <div class="tool-title">◈ ENTROPY UUID v4</div>
+      <div class="tool-desc">RFC 4122 v4 UUID via WebCrypto. Use for session tokens, database keys, unique identifiers, or nonces.</div>
+      <div class="tool-output" id="uuid-output">— click GENERATE —</div>
+      <div id="uuid-multi" style="display:flex;flex-direction:column;gap:3px;"></div>
+      <div class="tool-row">
+        <button class="tool-btn generate" onclick="genUUID()">◈ GENERATE</button>
+        <button class="tool-btn" onclick="genUUIDBatch()">BATCH ×10</button>
+        <button class="tool-btn copy-btn" onclick="copyTool('uuid-output',this)">COPY</button>
+        <span class="tool-trust">WEBCRYPTO</span>
+      </div>
+    </div>
+
+    <!-- Passphrase Generator -->
+    <div class="tool-card">
+      <div class="tool-title">◉ ENTROPY PASSPHRASE</div>
+      <div class="tool-desc">Diceware-style passphrase. Human-memorable, quantum-seeded. ~9.3 bits entropy per word.</div>
+      <div class="tool-row">
+        <span class="tool-label">WORDS</span>
+        <input type="range" class="tool-slider" id="pp-words" min="4" max="10" value="6">
+        <span class="tool-label" id="pp-words-val">6</span>
+      </div>
+      <div class="tool-output" id="pp-output" style="letter-spacing:.8px;">— click GENERATE —</div>
+      <div class="tool-row">
+        <button class="tool-btn generate" onclick="genPassphrase()">◉ GENERATE</button>
+        <button class="tool-btn copy-btn" onclick="copyTool('pp-output',this)">COPY</button>
+        <button class="tool-btn vault-save" id="pp-vault-btn" onclick="openVaultSave('pp-output','PASSPHRASE')" disabled title="Arm vault to save">🔒 SAVE</button>
+        <span class="tool-label" id="pp-bits" style="color:var(--ok);"></span>
+      </div>
+    </div>
+
+    <!-- Dice / Coin -->
+    <div class="tool-card">
+      <div class="tool-title">◻ ENTROPY DICE</div>
+      <div class="tool-desc">Quantum coin flips and dice rolls. Run many trials — distribution should approach theoretical.</div>
+      <div class="tool-row">
+        <button class="tool-btn" onclick="flipCoin()">FLIP COIN</button>
+        <span id="coin-result" style="color:var(--accent);">—</span>
+        <span id="coin-stats" style="font-size:var(--sz-xs);color:var(--muted);margin-left:4px;"></span>
+      </div>
+      <div class="dice-row">
+        <button class="tool-btn" onclick="rollDie(6)">D6</button>
+        <button class="tool-btn" onclick="rollDie(20)">D20</button>
+        <button class="tool-btn" onclick="rollDie(100)">D100</button>
+        <span id="dice-result" style="color:var(--accent);">—</span>
+      </div>
+    </div>
+
+    <!-- Raw Entropy Bytes -->
+    <div class="tool-card">
+      <div class="tool-title">⬇ RAW ENTROPY BYTES</div>
+      <div class="tool-desc">Fetch raw quantum bytes from your NEAR vault. Use to seed external applications, generate keys, or verify distribution.</div>
+      <div class="tool-row">
+        <span class="tool-label">BYTES</span>
+        <input type="range" class="tool-slider" id="dl-size" min="32" max="4096" step="32" value="256">
+        <span class="tool-label" id="dl-size-val">256</span>
+      </div>
+      <div class="tool-output" id="dl-hex" style="font-size:var(--sz-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.5px;">—</div>
+      <div class="tool-row">
+        <button class="tool-btn generate" onclick="fetchEntropyBytes()">⬇ FETCH</button>
+        <button class="tool-btn copy-btn" onclick="copyTool('dl-hex',this)">COPY HEX</button>
+        <span class="tool-trust">NEAR VAULT ⊕ WEBCRYPTO</span>
+      </div>
+    </div>
+
+    <!-- Random Number in Range -->
+    <div class="tool-card">
+      <div class="tool-title">⟆ RANDOM IN RANGE</div>
+      <div class="tool-desc">Cryptographically random integer between two bounds. Uses BigInt rejection sampling — zero statistical bias guaranteed.</div>
+      <div class="tool-row">
+        <span class="tool-label">MIN</span>
+        <input type="number" class="tool-number" id="rng-min" value="1">
+        <span class="tool-label" style="margin:0 4px;">—</span>
+        <span class="tool-label">MAX</span>
+        <input type="number" class="tool-number" id="rng-max" value="100">
+      </div>
+      <div class="tool-output" id="rng-output" style="font-size:clamp(18px,2.2vw,32px);font-weight:bold;text-align:center;min-height:54px;display:flex;align-items:center;justify-content:center;">—</div>
+      <div class="tool-row">
+        <button class="tool-btn generate" onclick="genRange()">⟆ GENERATE</button>
+        <button class="tool-btn copy-btn" onclick="copyTool('rng-output',this)">COPY</button>
+        <span class="tool-trust">WEBCRYPTO</span>
+      </div>
+    </div>
+
+  </div><!-- /tools-body -->
+</div><!-- /tab-tools -->
+
+<!-- ══════════════════════════════════════════════════════════
+     NEGENTROPY TAB — HMAC-SHA-256 DRBG Lifeboat Vault
+══════════════════════════════════════════════════════════ -->
+<div id="tab-neg" class="tab-content">
+  <div class="main-grid" style="grid-template-columns:minmax(0,34%) minmax(0,1fr) minmax(0,30%);">
+
+    <!-- ── LEFT: DRBG Status Panel ── -->
+    <div class="panel" id="neg-panel" style="border-color:rgba(129,140,248,.25);">
+      <div class="pbar">
+        <div class="dot" id="neg-dot"></div>
+        <span class="ptitle" style="color:var(--neg)">NEGENTROPY DRBG</span>
+        <span class="badge dim" id="neg-badge" style="border-color:var(--neg);color:var(--neg);">STARTING</span>
+      </div>
+
+      <div class="neg-stat-grid">
+        <div class="neg-stat"><div class="neg-sv" id="nd-bps">—</div><div class="neg-sl">Rate b/s</div><div class="neg-stat-ctx">CPU-speed deterministic</div></div>
+        <div class="neg-stat"><div class="neg-sv" id="nd-gen">—</div><div class="neg-sl">Bytes Out</div><div class="neg-stat-ctx">this session</div></div>
+        <div class="neg-stat"><div class="neg-sv" id="nd-rc">—</div><div class="neg-sl">Reseeds</div><div class="neg-stat-ctx">auto every 1 GB</div></div>
+        <div class="neg-stat"><div class="neg-sv" style="color:var(--sdr0)" id="nd-cap">∞</div><div class="neg-sl">Capacity</div><div class="neg-stat-ctx">mathematically infinite</div></div>
+      </div>
+
+      <div style="padding:8px 10px;flex-shrink:0;border-top:1px solid var(--bord);">
+        <div class="neg-sl" style="margin-bottom:4px;">SEED FINGERPRINT</div>
+        <div class="neg-seed-fp" id="nd-fp">--------</div>
+        <div id="nd-seeded" style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px;">NOT YET SEEDED</div>
+      </div>
+
+      <div class="neg-algo">
+        <span class="neg-algo-tag nist">NIST SP 800-90A</span>
+        <span class="neg-algo-tag nist">HMAC-SHA-256</span>
+        <span class="neg-algo-tag seed">QUANTUM SEEDED</span>
+        <span class="neg-algo-tag inf">∞ CAPACITY</span>
+      </div>
+
+      <div class="neg-phil">
+        <b>ENTROPY</b> = physical randomness · quantum · finite · precious<br>
+        <b>NEGENTROPY</b> = mathematical order · deterministic · infinite · reliable<br>
+        <b>XOR</b> of both = sovereign cryptographic independence
+      </div>
+    </div>
+
+    <!-- ── MIDDLE: Flow Diagram + Recamán Sequence + Byte Distribution ── -->
+    <div class="mid-col">
+
+      <!-- Seeding Chain Flow Diagram -->
+      <div class="panel neg-flow-wrap" style="border-color:rgba(129,140,248,.2);">
+        <div class="pbar" style="padding:3px 8px;flex-shrink:0;">
+          <span style="color:var(--neg);letter-spacing:2px;font-size:var(--sz-xs);">◈ SEEDING CHAIN</span>
+          <span style="margin-left:auto;font-size:6px;color:rgba(129,140,248,.45);letter-spacing:1px;">quantum seeds math → math outputs ∞</span>
+        </div>
+        <canvas id="neg-flow-canvas" style="height:54px;display:block;width:100%;"></canvas>
+      </div>
+
+      <div class="panel neg-recaman" style="border-color:rgba(129,140,248,.2);">
+        <div class="canvas-info pbar">
+          <span style="color:var(--neg);letter-spacing:2px;font-size:var(--sz-xs);">◈ RECAMÁN SEQUENCE</span>
+          <span id="neg-seq-n" style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;">n=0</span>
+        </div>
+        <div style="padding:0 8px 3px;flex-shrink:0;font-size:6px;letter-spacing:.4px;color:rgba(129,140,248,.35);line-height:1.5;">
+          Each arc = one step: a(n) = a(n−1) ± n &nbsp;·&nbsp; deterministic from your quantum seed &nbsp;·&nbsp; same seed → same sequence forever
+        </div>
+        <canvas id="recaman-canvas"></canvas>
+      </div>
+
+      <div class="panel neg-bytevis" style="border-color:rgba(129,140,248,.2);">
+        <div class="canvas-info pbar" style="padding:3px 8px;">
+          <span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:2px;">BYTE DISTRIBUTION</span>
+          <span style="font-size:6px;letter-spacing:.5px;color:rgba(34,197,94,.55);">flat line = perfect uniformity</span>
+          <span id="neg-last-src" style="margin-left:auto;font-size:var(--sz-xs);color:var(--neg);letter-spacing:1px;">—</span>
+        </div>
+        <canvas id="neg-byte-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: Lifeboat Controls ── -->
+    <div class="panel" style="border-color:rgba(129,140,248,.25);">
+      <div class="pbar">
+        <div class="dot" id="neg-ctrl-dot" style="background:var(--neg);box-shadow:0 0 6px var(--neg);animation:dp 2s ease-in-out infinite;"></div>
+        <span class="ptitle" style="color:var(--neg)">LIFEBOAT CONTROLS</span>
+      </div>
+      <div class="neg-ctrl-body">
+
+        <div class="neg-section-hdr">GENERATE BYTES</div>
+
+        <div class="neg-mode-row" id="neg-mode-row">
+          <button class="neg-mode-btn active" id="negm-0" onclick="setNegMode(0)">🔢 DRBG<br><span style="font-size:6px;opacity:.65;letter-spacing:.5px;text-transform:none;">pure math</span></button>
+          <button class="neg-mode-btn" id="negm-1" onclick="setNegMode(1)">⚛ QUANTUM<br><span style="font-size:6px;opacity:.65;letter-spacing:.5px;text-transform:none;">raw vault</span></button>
+          <button class="neg-mode-btn blend-mode" id="negm-2" onclick="setNegMode(2)">⊕ BLEND<br><span style="font-size:6px;opacity:.65;letter-spacing:.5px;text-transform:none;">XOR both</span></button>
+        </div>
+
+        <div style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:.5px;line-height:1.7;" id="neg-mode-desc">
+          Pure HMAC-SHA-256 DRBG. Deterministic, infinite. Seeded once from quantum vault.
+        </div>
+
+        <div class="neg-ctrl-row">
+          <span class="neg-lbl">BYTES</span>
+          <input type="number" class="neg-input" id="neg-n" value="32" min="1" max="4096">
+          <button class="neg-btn primary" onclick="negGenerate()">▶ GENERATE</button>
+        </div>
+
+        <div class="neg-out" id="neg-out">—</div>
+
+        <div class="neg-ctrl-row">
+          <button class="neg-btn" onclick="copyNeg()" style="flex:1;">COPY HEX</button>
+          <span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;" id="neg-copy-ok"></span>
+        </div>
+
+        <div class="neg-section-hdr" style="margin-top:4px;">CONTINUOUS STREAM</div>
+
+        <div class="neg-ctrl-row">
+          <button class="neg-btn" id="neg-stream-btn" onclick="toggleNegStream()">▶ START AUTO</button>
+          <span class="neg-lbl" id="neg-stream-stat">STOPPED</span>
+        </div>
+
+        <div class="neg-section-hdr" style="margin-top:4px;">RESEED</div>
+
+        <div class="neg-warn">
+          Reseed pulls 64 fresh bytes from near_vault. Only needed after 1 GB generated — auto-reseed is active.
+        </div>
+
+        <div class="neg-ctrl-row">
+          <button class="neg-btn" onclick="negReseed()" id="neg-reseed-btn" disabled>⟳ FORCE RESEED</button>
+          <span id="neg-reseed-st" style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;"></span>
+        </div>
+
+        <div class="neg-section-hdr" style="margin-top:4px;">SEED EXPORT</div>
+        <div class="neg-warn">
+          ⚠ Seed export reveals DRBG internal state. Keep private — equivalent to a private key.
+        </div>
+        <div class="neg-fp" id="neg-export-fp" style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;text-align:center;padding:4px 0;">fingerprint: <span id="neg-exp-fp-val">--------</span></div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Bottom Bar ── -->
+  <div id="bottom-neg">
+    <span class="neg-inf-badge">∞ INFINITE CAPACITY</span>
+    <div class="vault-row">
+      <span class="vl" style="color:var(--neg);">DRBG</span>
+      <div class="vtrack"><div class="vfill" id="neg-vfill" style="width:100%;background:linear-gradient(90deg,#1a1040,#3730a3,var(--neg));box-shadow:2px 0 8px var(--neg);"></div></div>
+      <span class="vpct" style="color:var(--neg);">LIFEBOAT · ALWAYS FULL</span>
+    </div>
+    <span style="margin-left:auto;font-size:var(--sz-xs);letter-spacing:2px;color:var(--muted);" id="neg-status-txt">NIST SP 800-90A</span>
+  </div>
+</div><!-- /tab-neg -->
+
+<!-- ══ VAULT SAVE POPUP ══ -->
+<div class="vault-modal" id="vault-save-modal">
+  <div class="vault-box">
+    <div class="vault-box-hdr">
+      <div class="vault-dot armed" style="background:var(--ok);box-shadow:0 0 6px var(--ok);animation:dp 2s ease-in-out infinite;"></div>
+      <span class="vault-box-title" style="color:var(--ok);">SAVE TO SOVEREIGN VAULT</span>
+      <button class="vault-close-btn" onclick="closeVaultSave()">✕</button>
+    </div>
+    <div class="vault-box-body">
+      <div>
+        <div style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">CREDENTIAL TO SAVE</div>
+        <div class="vault-save-pw-preview" id="vlt-save-preview">—</div>
+      </div>
+      <div>
+        <div style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">DESCRIPTION / LABEL <span style="color:var(--danger)">*</span></div>
+        <textarea class="vault-desc-input" id="vlt-desc" placeholder="e.g.  GitHub SSH key · created 2026-05-21  |  ProtonMail account  |  NEAR protocol wallet..." maxlength="200"></textarea>
+      </div>
+      <div class="vault-entropy-status ok" id="vlt-save-entropy-status">
+        <span>🔐</span>
+        <span id="vlt-save-entropy-msg">Checking entropy…</span>
+      </div>
+      <button class="vault-save-btn" id="vlt-save-confirm-btn" onclick="vaultConfirmSave()" disabled>🔐 ENCRYPT &amp; SAVE WITH QUANTUM KEY</button>
+      <div style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:.5px;line-height:1.8;text-align:center;opacity:.6;">
+        AES-GCM-256 · IV from QRNG · Session-scoped key · Stored locally
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VAULT LIBRARY ══ -->
+<div class="vault-modal" id="vault-lib-modal">
+  <div class="vault-box lib">
+    <div class="vault-box-hdr">
+      <span style="font-size:16px;">🗄️</span>
+      <span class="vault-box-title" style="color:var(--ok);">SOVEREIGN VAULT LIBRARY</span>
+      <button class="vault-close-btn" onclick="closeVaultLibrary()">✕</button>
+    </div>
+    <!-- stats row -->
+    <div class="vault-stat-row" id="vlt-lib-stats" style="padding:10px 18px;flex-shrink:0;">
+      <div class="vault-stat-cell"><div class="vault-stat-val" id="vls-total">0</div><div class="vault-stat-lbl">Entries</div></div>
+      <div class="vault-stat-cell"><div class="vault-stat-val" id="vls-session">0</div><div class="vault-stat-lbl">This Session</div></div>
+      <div class="vault-stat-cell"><div class="vault-stat-val" style="color:var(--neg);" id="vls-algo">AES-GCM-256</div><div class="vault-stat-lbl">Cipher</div></div>
+      <div class="vault-stat-cell"><div class="vault-stat-val" style="color:var(--sdr0);" id="vls-source">QRNG</div><div class="vault-stat-lbl">Key Source</div></div>
+    </div>
+    <!-- search -->
+    <div class="vault-lib-toolbar">
+      <input class="vault-search" id="vlt-search" type="text" placeholder="Search descriptions…" oninput="vaultSearch()">
+      <button class="vault-act-btn del" style="font-size:var(--sz-xs);" onclick="vaultClearAll()" id="vlt-clear-btn">CLEAR ALL</button>
+    </div>
+    <!-- arm banner (shown when not armed) -->
+    <div class="vault-arm-banner" id="vlt-arm-banner" style="display:none;margin:14px 18px;flex-shrink:0;">
+      <b>🔒 VAULT NOT ARMED THIS SESSION</b>
+      Entries from previous sessions cannot be decrypted — the quantum key is session-scoped and was not retained.
+      Arm the vault to save new credentials, or generate new passwords to replace old ones.
+      <br><button class="vault-arm-banner-btn" onclick="vaultArm();closeVaultLibrary();">⚡ ARM VAULT NOW</button>
+    </div>
+    <!-- entries list -->
+    <div class="vault-box-body" id="vlt-lib-body" style="padding:12px 18px;gap:8px;">
+      <div class="vault-empty" id="vlt-empty">No credentials saved yet.<br><br>Generate a password or passphrase and click 🔒 SAVE.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SDR SETUP MODAL -->
+<div id="sdr-modal">
+  <div id="sdr-box">
+    <button id="sdr-close" onclick="closeSDRModal()">✕</button>
+    <h2>RTL-SDR Setup Guide</h2>
+    <div class="sdr-step"><div class="sdr-num">1</div><div class="sdr-text">Download <strong>Zadig</strong> from <code>zadig.akeo.ie</code>, run as Admin. Plug dongle, select <strong>RTL2832U</strong> → <strong>WinUSB</strong> → Install Driver.</div></div>
+    <div class="sdr-step"><div class="sdr-num">2</div><div class="sdr-text">Install: <code>pip install pyrtlsdr pyrtlsdrlib</code></div></div>
+    <div class="sdr-step"><div class="sdr-num">3</div><div class="sdr-text">Plug dongle. NEAR engine auto-detects within 8 s. Status turns <strong style="color:var(--ok)">LIVE</strong>.</div></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+const fmt = v => {
+  if (!v && v !== 0) return '—';
+  if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+  return Math.round(v).toString();
+};
+const fmtBps   = v => fmt(v)+' b/s';
+const fmtBytes = b => {
+  if (b >= 1073741824) return (b/1073741824).toFixed(4)+' GB';
+  if (b >= 1048576)    return (b/1048576).toFixed(1)+' MB';
+  if (b >= 1024)       return (b/1024).toFixed(0)+' KB';
+  return b+' B';
+};
+
+// ── TABS ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'intel') buildWizard();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+  });
+});
+
+// ── Intel sections toggle ──
+function toggleSection(hdr) {
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+// ── CLOCK ──
+function tick() {
+  const n=new Date(), p=v=>String(v).padStart(2,'0');
+  $('clock').textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+}
+setInterval(tick,1000); tick();
+
+// ── SDR MODAL ──
+function openSDRModal()  { $('sdr-modal').classList.add('open'); }
+function closeSDRModal() { $('sdr-modal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeSDRModal(); });
+
+// ── FEED OFFLINE DETECT ──
+// ── MULTI-CAM STACK ──
+let _cams = []; // [{index, label, stream, snapshot, is_builtin}]
+let _primaryCam = 0;
+
+function setPrimaryCam(n) {
+  _primaryCam = n;
+  $('cam-stack').querySelectorAll('.cam-card').forEach((c,i)=>{
+    c.classList.toggle('cam-primary', i===n);
+  });
+  // Point the main feed img to this camera for entropy tracking
+  const img = $('feed-img');
+  if (img && _cams[n]) img.src = 'http://127.0.0.1:8090' + _cams[n].stream;
+}
+
+async function initCamStack() {
+  try {
+    const r = await fetch('http://127.0.0.1:8090/cameras', {signal: AbortSignal.timeout(3000)});
+    if (!r.ok) return;
+    const cams = await r.json();
+    _cams = cams;
+    const stack = $('cam-stack');
+    const camLabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $('cam-count').textContent = cams.length + ' / 50';
+    // Update card-0 with real data
+    if (cams[0]) {
+      stack.querySelector('#cam-card-0 .cam-card-name').textContent =
+        'CAM-' + (cams[0].label||'A') + ' · ' + (cams[0].is_builtin ? 'Built-in' : 'USB');
+      $('feed-img').src = 'http://127.0.0.1:8090' + cams[0].stream;
+    }
+    // Render extra cameras (index 1+)
+    for (let i = 1; i < cams.length && i < 50; i++) {
+      const c = cams[i];
+      const label = 'CAM-' + (c.label || camLabels[i] || i);
+      const tag = c.is_builtin ? 'Built-in' : 'USB';
+      const card = document.createElement('div');
+      card.className = 'cam-card';
+      card.id = 'cam-card-' + i;
+      card.onclick = () => setPrimaryCam(i);
+      card.innerHTML = `
+        <div class="cam-card-bar">
+          <div class="sdot" id="cam-sdot-${i}" data-src="cam"></div>
+          <span class="cam-card-name" style="color:var(--accent)">${label} · ${tag}</span>
+          <span class="cam-card-bdg" id="cam-card-bdg-${i}">WAITING</span>
+        </div>
+        <div class="cam-feed">
+          <img src="http://127.0.0.1:8090${c.stream}" alt="" loading="lazy">
+          <div class="cam-feed-tag">CMOS · ${c.width}×${c.height}</div>
+          <div class="cam-offline-ov" id="cam-ov-${i}">
+            <span style="font-size:14px;color:var(--accent)">◎</span>
+            <span style="font-size:var(--sz-xs);letter-spacing:2px">${label} Offline</span>
+          </div>
+        </div>`;
+      stack.appendChild(card);
+    }
+  } catch(e) {
+    $('cam-count').textContent = '1 / 50';
+  }
+}
+setTimeout(initCamStack, 1200);
+
+let _truePrimaryCam = 0, _trueCams = [];
+
+function setTruePrimaryCam(n) {
+  _truePrimaryCam = n;
+  $('true-cam-stack').querySelectorAll('.cam-card').forEach((c,i)=>{
+    c.classList.toggle('cam-primary', i===n);
+  });
+  const img = $('true-feed-img');
+  if (img && _trueCams[n]) img.src = 'http://127.0.0.1:8090' + _trueCams[n].stream;
+}
+
+async function initTrueCamStack() {
+  try {
+    const r = await fetch('http://127.0.0.1:8090/cameras', {signal: AbortSignal.timeout(3000)});
+    if (!r.ok) return;
+    const cams = await r.json();
+    _trueCams = cams.filter(c => !c.is_builtin);
+    const stack = $('true-cam-stack');
+    $('true-cam-count').textContent = _trueCams.length + ' / 50';
+    const camLabels = 'BCDEFGHIJKLMNOPQRSTUVWXYZ';
+    if (_trueCams[0]) {
+      stack.querySelector('#true-cam-card-0 .cam-card-name').textContent =
+        'CAM-' + camLabels[0] + ' · Laser Shot';
+      $('true-feed-img').src = 'http://127.0.0.1:8090' + _trueCams[0].stream;
+    }
+    for (let i = 1; i < _trueCams.length && i < 50; i++) {
+      const c = _trueCams[i];
+      const label = 'CAM-' + (camLabels[i] || i);
+      const card = document.createElement('div');
+      card.className = 'cam-card';
+      card.id = 'true-cam-card-' + i;
+      card.onclick = () => setTruePrimaryCam(i);
+      card.innerHTML = `
+        <div class="cam-card-bar">
+          <div class="sdot" id="true-cam-sdot-${i}" data-src="cam"></div>
+          <span class="cam-card-name" style="color:var(--true)">${label} · Laser Shot</span>
+          <span class="cam-card-bdg" id="true-cam-card-bdg-${i}">OFFLINE</span>
+        </div>
+        <div class="cam-feed">
+          <img src="http://127.0.0.1:8090${c.stream}" alt="" loading="lazy">
+          <div class="cam-feed-tag" style="color:rgba(245,158,11,.5)">PHOTON SHOT · ${c.width}×${c.height}</div>
+          <div class="cam-offline-ov" id="true-cam-ov-${i}">
+            <span style="font-size:14px;color:var(--true)">◎</span>
+            <span style="font-size:var(--sz-xs);letter-spacing:2px">${label} Offline</span>
+          </div>
+        </div>`;
+      stack.appendChild(card);
+    }
+  } catch(e) {
+    $('true-cam-count').textContent = '1 / 50';
+  }
+}
+setTimeout(initTrueCamStack, 1500);
+
+// ── CAMERA LIVENESS CHECK ──
+let wasOffline=false;
+async function checkFeed() {
+  try {
+    const idx = _cams[_primaryCam] ? _primaryCam : 0;
+    const snapUrl = _cams[idx]
+      ? 'http://127.0.0.1:8090' + _cams[idx].snapshot
+      : 'http://127.0.0.1:8090/snapshot/0.jpg';
+    const r=await fetch(snapUrl,{cache:'no-store',signal:AbortSignal.timeout(2500)});
+    if (r.ok) {
+      const bdg = document.getElementById('cam-card-bdg-' + _primaryCam) || $('cam-badge');
+      if (bdg) { bdg.textContent='LIVE'; bdg.className='cam-card-bdg live'; }
+      const dot = document.getElementById('cam-sdot-' + _primaryCam);
+      if (dot) { dot.classList.add('live'); dot.dataset.src='cam'; }
+      if (wasOffline) {
+        $('feed-img').style.opacity='1';
+        $('feed-offline').style.display='none';
+        wasOffline=false;
+      }
+    } else throw 0;
+  } catch {
+    wasOffline=true;
+    $('feed-img').style.opacity='0';
+    $('feed-offline').style.display='flex';
+    const bdg = $('cam-card-bdg-0');
+    if (bdg) { bdg.textContent='OFFLINE'; bdg.className='cam-card-bdg warn'; }
+  }
+}
+setTimeout(checkFeed,1500); setInterval(checkFeed,4000);
+
+// ── DYNAMIC SOURCE REGISTRY ──
+const SRC_META = {
+  cam:   {label:'CAM-A',       color:'var(--accent)', always:true},
+  sdr0:  {label:'RTL-SDR [0]', color:'var(--sdr0)',   always:false},
+  sdr1:  {label:'RTL-SDR [1]', color:'var(--sdr1)',   always:false},
+  cpu:   {label:'CPU JITTER',  color:'var(--cpu)',     always:true},
+  audio: {label:'AUDIO ADC',   color:'var(--audio)',  always:true},
+};
+// Rows that are currently rendered
+const _srcRendered = new Set();
+
+function ensureSrcRow(id) {
+  if (_srcRendered.has(id)) return;
+  const m = SRC_META[id]; if (!m) return;
+  const list = $('src-list'); if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'src-row'; row.id = 'srcrow-' + id;
+  row.innerHTML = `
+    <div class="sdot" id="d-${id}" data-src="${id}"></div>
+    <span class="src-name" style="color:${m.color}">${m.label}</span>
+    <span class="src-bps" id="b-${id}">—</span>
+    <span class="src-status" id="st-${id}">${m.always ? 'WAITING' : '—'}</span>`;
+  // insert in defined order
+  const order = Object.keys(SRC_META);
+  const myIdx = order.indexOf(id);
+  let inserted = false;
+  for (const child of list.children) {
+    const childId = child.id.replace('srcrow-','');
+    if (order.indexOf(childId) > myIdx) { list.insertBefore(row, child); inserted=true; break; }
+  }
+  if (!inserted) list.appendChild(row);
+  _srcRendered.add(id);
+}
+
+function removeSrcRow(id) {
+  if (!_srcRendered.has(id)) return;
+  const row = $('srcrow-'+id); if (row) row.remove();
+  _srcRendered.delete(id);
+  // reset its signal bar
+  const bar = $('sig-'+id); if (bar) bar.className='sig-bar';
+}
+
+// Call once on load to render always-present sources
+Object.entries(SRC_META).forEach(([id, m]) => { if (m.always) ensureSrcRow(id); });
+
+// ── SOURCE STATUS ──
+function setSrc(id, bps, status) {
+  const isLive = status==='LIVE';
+  const isWarn = ['LOW_SIGNAL','WARMING','STARTING','DISABLED'].includes(status);
+  const isSdr  = id==='sdr0'||id==='sdr1';
+  const dot=$('d-'+id), badge=$('st-'+id), bpsEl=$('b-'+id);
+  dot.className='sdot'+(isLive?' live':'');
+  dot.dataset.src=id;
+  bpsEl.textContent=isLive?fmtBps(bps):'—';
+  if (isSdr && !isLive) {
+    badge.innerHTML='';
+    badge.className='src-status';
+    badge.style.cssText='border:none;padding:0';
+    if (!badge.querySelector('.setup-btn')) {
+      const btn=document.createElement('button');
+      btn.className='setup-btn';
+      btn.textContent='SETUP ▶';
+      btn.onclick=openSDRModal;
+      badge.appendChild(btn);
+    }
+  } else {
+    badge.innerHTML='';
+    badge.textContent=status||'UNKNOWN';
+    badge.className='src-status'+(isLive?' live':isWarn?' warn':' err');
+    badge.style.cssText='';
+  }
+  // ── update header signal bar ──
+  const bar = $('sig-'+id);
+  if (bar) bar.className = 'sig-bar' + (isLive ? ' live' : isWarn ? ' warn' : '');
+}
+
+// ── HARDWARE CATALOG — update based on RTL detection ──
+function updateHWCatalog(rtl0, rtl1) {
+  const isNooelec = rtl0==='LIVE';
+  ['nooelec','rtlv3','rtlv4'].forEach((id,i) => {
+    const dot=$('hdot-'+id), st=$('hst-'+id);
+    if (!dot||!st) return;
+    if (i===0 && isNooelec) {
+      dot.className='hw-dot connected';
+      st.className='hw-status connected'; st.textContent='CONNECTED';
+    }
+  });
+}
+
+// ── SPARKLINE ──
+const sparkHistory=[], SPARK_MAX=120;
+function initSpark() {
+  const cv=$('spark-canvas'), wrap=cv.parentElement;
+  cv.width=wrap.clientWidth||400; cv.height=wrap.clientHeight||24;
+}
+function drawSpark(bps) {
+  const cv=$('spark-canvas');
+  if (!cv) return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height-4;
+  sparkHistory.push(bps);
+  if (sparkHistory.length>SPARK_MAX) sparkHistory.shift();
+  ctx.clearRect(0,0,W,H+4);
+  if (sparkHistory.length<2) return;
+  const max=Math.max(...sparkHistory,1);
+  ctx.beginPath();
+  ctx.strokeStyle='rgba(0,212,255,.7)';
+  ctx.lineWidth=1.5;
+  sparkHistory.forEach((v,i)=>{
+    const x=(i/(SPARK_MAX-1))*W, y=H-(v/max)*H+2;
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.lineTo(W,H+2);ctx.lineTo(0,H+2);ctx.closePath();
+  ctx.fillStyle='rgba(0,212,255,.06)';ctx.fill();
+}
+
+// ── QUALITY ──
+function computeQuality(hex) {
+  if (!hex||hex.length<16) return .5;
+  const bytes=[];
+  for (let i=0;i<hex.length;i+=2) bytes.push(parseInt(hex.slice(i,i+2),16));
+  const freq=new Array(256).fill(0);
+  bytes.forEach(b=>freq[b]++);
+  const n=bytes.length; let H=0;
+  freq.forEach(f=>{if(f>0){const p=f/n;H-=p*Math.log2(p);}});
+  return Math.min(H/8.0,1.0);
+}
+
+// ── MAIN POLL — NEAR ──
+let nearHex = '';
+async function pollNear() {
+  try {
+    const r=await fetch('/api/near',{cache:'no-store'});
+    if (!r.ok) return;
+    const d=await r.json();
+    const live=d.cam_status==='LIVE';
+    $('total-bps-hdr').textContent=fmtBps(d.bits_per_sec||0);
+    // cam panel
+    const cb=$('cam-badge'), cd=$('cam-dot');
+    cb.textContent=d.cam_status||'—';
+    cb.className='badge'+(live?' ':'  dim');
+    if(live){cb.style='border-color:var(--accent);color:var(--accent)';cd.className='dot live-near';}
+    else{cb.style='';cd.className='dot';}
+    $('s-bps').textContent=fmtBps(d.bits_per_sec||0);
+    const bal=d.bit_balance||0;
+    const bEl=$('s-bal'), bSt=$('s-balst');
+    bEl.textContent=bal.toFixed(4);
+    bSt.textContent='Balance';
+    bEl.className='sv'+(Math.abs(bal-0.5)<0.05?' bok':Math.abs(bal-0.5)<0.08?' bwrn':' bbad');
+    $('s-cbps').textContent=fmtBps(d.cam_bps||0);
+    $('s-fps').textContent=(d.fps||0).toFixed(1);
+    $('s-chunks').textContent=fmt(d.chunks_total||0);
+    $('s-gb').textContent=fmtBytes(d.vault_bytes||0);
+    // sources
+    setSrc('cam',   d.cam_bps||0,   d.cam_status||'WAITING');
+    setSrc('cpu',   d.cpu_bps||0,   d.cpu_status||'STARTING');
+    setSrc('audio', d.audio_bps||0, d.audio_status||'STARTING');
+    // SDR rows appear/disappear based on hardware detection
+    const sdr0Present = d.rtl0_status && d.rtl0_status !== '—';
+    const sdr1Present = d.rtl1_status && d.rtl1_status !== '—';
+    if (sdr0Present) { ensureSrcRow('sdr0'); setSrc('sdr0', d.rtl0_bps||0, d.rtl0_status); }
+    else removeSrcRow('sdr0');
+    if (sdr1Present) { ensureSrcRow('sdr1'); setSrc('sdr1', d.rtl1_bps||0, d.rtl1_status); }
+    else removeSrcRow('sdr1');
+    // update src count to reflect actual rendered sources
+    updateHWCatalog(d.rtl0_status, d.rtl1_status);
+    const liveN=(d.active_sources||[]).length;
+    $('src-n').textContent=liveN;
+    $('src-badge').textContent=`${liveN} / ${_srcRendered.size}`;
+    // vault
+    const vpct=d.vault_pct||0;
+    $('vbar').style.width=Math.min(vpct,100)+'%';
+    $('vpct').textContent=vpct.toFixed(3)+'%';
+    $('vgb').textContent=`${fmtBytes(d.vault_bytes||0)} / 5.00 GB`;
+    // quality
+    nearHex=d.last_bytes_hex||'';
+    const q=computeQuality(nearHex);
+    $('qbar').style.width=(q*100)+'%';
+    $('qval').textContent=`H=${(q*8).toFixed(3)} bit/B · bal=${bal.toFixed(4)}`;
+    drawSpark(d.bits_per_sec||0);
+    // inject to viz
+    if (nearHex) { injectBytesMath(nearHex); injectBytesEscher(nearHex); }
+    // Feed intel hero bar (Inverted Pyramid: always-fresh system state)
+    const _ihb=$('ih-bps'),_ihs=$('ih-srcs'),_ihv=$('ih-vault');
+    if(_ihb)_ihb.textContent=fmtBps(d.bits_per_sec||0);
+    if(_ihs)_ihs.textContent=(d.active_sources||[]).length+' / '+_srcRendered.size;
+    if(_ihv)_ihv.textContent=(d.vault_pct||0).toFixed(2)+'%';
+    runAdvisor(d);
+    // feed vault entropy gate
+    if (window._vaultUpdateEntropy) window._vaultUpdateEntropy(vpct, window._negDrbgSeeded || false);
+  } catch(e) {}
+}
+
+// ── POLL — TRUE ──
+async function pollTrue() {
+  try {
+    const r=await fetch('/api/true',{cache:'no-store'});
+    if (!r.ok) return;
+    const d=await r.json();
+    if (d.error) return;
+    $('t-bps').textContent=fmtBps(d.bits_per_sec||0);
+    const bal=d.bit_balance||0;
+    $('t-bal').textContent=bal.toFixed(4);
+    $('t-cbps').textContent=fmtBps(d.cam_bps||0);
+    $('t-fps').textContent=(d.fps||0).toFixed(1);
+    $('t-chunks').textContent=fmt(d.chunks_total||0);
+    $('t-gb').textContent=fmtBytes(d.vault_bytes||0);
+    const vpct=d.vault_pct||0;
+    $('true-vbar').style.width=Math.min(vpct,100)+'%';
+    $('true-vpct').textContent=vpct.toFixed(3)+'%';
+    $('true-vgb').textContent=`${fmtBytes(d.vault_bytes||0)} / 10.00 GB`;
+    const q=computeQuality(d.last_bytes_hex||'');
+    $('qbar-true').style.width=(q*100)+'%';
+    $('qval-true').textContent=`H=${(q*8).toFixed(3)} bit/B`;
+    if (d.last_bytes_hex) { injectBytesMathTrue(d.last_bytes_hex); injectBytesEscherTrue(d.last_bytes_hex); }
+  } catch(e) {}
+}
+
+// Poll both every 2s
+setInterval(pollNear, 2000); pollNear();
+setInterval(pollTrue, 2000);
+
+// ── TROUBLESHOOTING WIZARD ──
+const WIZ = {
+  start: { q:'What is the problem?', opts:[
+    {t:'RTL-SDR not working', n:'sdr1'},
+    {t:'Camera offline', n:'cam1'},
+    {t:'Low entropy rate', n:'low1'},
+    {t:'Service not starting', n:'svc1'},
+    {t:'Dashboard not loading', n:'dash1'},
+  ]},
+  sdr1: { q:'Is the RTL-SDR dongle physically plugged in?', opts:[{t:'Yes',n:'sdr2'},{t:'No',n:'sdr_plug'}]},
+  sdr_plug: { solved:'Plug the RTL-SDR dongle into a USB port, then wait 8 seconds for auto-detection.' },
+  sdr2: { q:'Have you installed the WinUSB driver via Zadig?', opts:[{t:'Yes',n:'sdr3'},{t:'No / Not sure',n:'sdr_zadig'}]},
+  sdr_zadig: { solved:'Download Zadig from zadig.akeo.ie, run as Administrator, plug dongle, select RTL2832U, choose WinUSB, click Install Driver. Then restart the NEAR engine.' },
+  sdr3: { q:'Does Device Manager show the dongle under "Universal Serial Bus devices" (not "Other devices")?', opts:[{t:'Yes',n:'sdr4'},{t:'No / Shows yellow warning',n:'sdr_zadig'}]},
+  sdr4: { solved:'Driver OK. Run: python near_entropy.py — check log at C:\\QRNG_Pool\\near_entropy.log for the specific error. If it says ACCESS_DENIED, another program is using the dongle. Close SDR#, HDSDR, or any other SDR software.' },
+  cam1: { q:'Does the webcam work in other apps (e.g. Camera app)?', opts:[{t:'Yes',n:'cam2'},{t:'No',n:'cam_hw'}]},
+  cam_hw: { solved:'Hardware issue — check camera privacy settings in Windows: Settings → Privacy → Camera → Allow apps to access camera.' },
+  cam2: { q:'Is webcam_server.py running? (check port 8090)', opts:[{t:'Yes, port 8090 is listening',n:'cam3'},{t:'No',n:'cam_start'}]},
+  cam_start: { solved:'Run: python webcam_server.py — or use LAUNCH_NEAR.ps1 which starts it automatically. Check that opencv-python is installed: pip install opencv-python' },
+  cam3: { solved:'webcam_server.py is running. If the feed still shows offline, try: python webcam_server.py --index 1 (tries different camera index). Check the feed at http://127.0.0.1:8090/snapshot_builtin.jpg' },
+  low1: { q:'Which sources show LIVE status?', opts:[{t:'Only CPU/Audio',n:'low2'},{t:'Also webcam',n:'low3'},{t:'None',n:'low4'}]},
+  low2: { solved:'CPU+Audio alone give ~8,000 b/s. Add a webcam source (+3,000 b/s) or RTL-SDR dongle (+5,000 b/s each) for higher rates.' },
+  low3: { solved:'Cam + CPU + Audio is a good baseline (~12,000 b/s). For higher rates, add RTL-SDR dongles. The hardware catalog shows what to buy.' },
+  low4: { solved:'No sources live — near_entropy.py may not be running. Check port 8766: run python near_entropy.py and watch the log at C:\\QRNG_Pool\\near_entropy.log' },
+  svc1: { q:'Which service?', opts:[{t:'near_entropy.py',n:'svc_near'},{t:'entropy_api.py',n:'svc_api'},{t:'webcam_server.py',n:'cam_start'}]},
+  svc_near: { solved:'Check: python near_entropy.py — look for import errors. Run: pip install numpy Pillow pyrtlsdr pyrtlsdrlib sounddevice — then retry.' },
+  svc_api: { solved:'Run: python entropy_api.py — should start on port 8888. Check no other process uses 8888: netstat -ano | findstr 8888' },
+  dash1: { q:'Can you reach http://127.0.0.1:8888 at all?', opts:[{t:'No — connection refused',n:'dash2'},{t:'Yes but page is blank/broken',n:'dash3'}]},
+  dash2: { solved:'entropy_api.py is not running. Run: python entropy_api.py (or use LAUNCH_NEAR.ps1). Then open http://127.0.0.1:8888/near' },
+  dash3: { solved:'entropy_api.py running but serving wrong file. Check: C:\\WINDOWS\\system32\\hpclaude\\entropy_rig\\near_dashboard.html exists. Restart entropy_api.py.' },
+};
+let wizHistory=[];
+function buildWizard() {
+  wizHistory=[];
+  renderWiz('start');
+}
+function renderWiz(nodeId) {
+  const node=WIZ[nodeId]; if(!node) return;
+  const c=$('wiz-container'); c.innerHTML='';
+  if (node.solved) {
+    const d=document.createElement('div'); d.className='wiz-solved';
+    d.innerHTML='<strong style="color:var(--ok)">✓ SOLUTION</strong><br><br>'+node.solved;
+    c.appendChild(d);
+  } else {
+    const d=document.createElement('div'); d.className='wiz-node';
+    d.innerHTML='<div class="wiz-q">'+node.q+'</div><div class="wiz-btns">'+
+      node.opts.map(o=>`<button class="wiz-btn" onclick="wizStep('${o.n}')">${o.t}</button>`).join('')+'</div>';
+    c.appendChild(d);
+  }
+  if (wizHistory.length>0) {
+    const back=document.createElement('button');
+    back.className='wiz-back';
+    back.textContent='← BACK';
+    back.onclick=()=>{ wizHistory.pop(); renderWiz(wizHistory.pop()||'start'); };
+    c.appendChild(back);
+  }
+}
+function wizStep(nodeId) {
+  wizHistory.push(nodeId);
+  renderWiz(nodeId);
+}
+
+// ────────────────────────────────────────────────────────────
+//  LORENZ ATTRACTOR  (top half of middle column)
+// ────────────────────────────────────────────────────────────
+(function(){
+  let mathCanvas,mathCtx,mathCanvasTrue,mathCtxTrue;
+  let W,H,Wt,Ht,cameraAngle=0;
+  const SIGMA_BASE=10,RHO=28,BETA=8/3,DT=0.005;
+  const MAX_TRAILS=6,TRAIL_LEN=800,FADE_ALPHA=0.018;
+  const PALETTE=["#00d4ff","#c084fc","#22c55e","#f59e0b","#ef4444","#ffffff"];
+  let trails=[],trailsTrue=[];
+  function hexToBytes(hex){const b=new Uint8Array(Math.floor(hex.length/2));for(let i=0;i<b.length;i++)b[i]=parseInt(hex.slice(i*2,i*2+2),16);return b;}
+  function byteToRange(b,lo,hi){return lo+(b/255)*(hi-lo);}
+  function spawnTrail(pool,x0,y0,z0,sigma,color){pool.push({x:x0,y:y0,z:z0,sigma,color,pts3D:[],age:0});if(pool.length>MAX_TRAILS)pool.shift();}
+  function lorenzStep(t){const{x,y,z,sigma}=t;t.x+=sigma*(y-x)*DT;t.y+=(x*(RHO-z)-y)*DT;t.z+=(x*y-BETA*z)*DT;}
+  function project3D(x,y,z,w,h,cam){
+    const rx=Math.cos(cam)*x+Math.sin(cam)*y;
+    const ry=z-25;
+    const rz=-Math.sin(cam)*x+Math.cos(cam)*y;
+    const fov=280,dz=rz+90,sc=fov/(dz+fov);
+    return[w/2+rx*sc*(w/55),h/2-ry*sc*(h/52),sc];
+  }
+  function drawTrail3D(ctx,pts,color){
+    if(pts.length<2)return;ctx.save();ctx.strokeStyle=color;ctx.shadowColor=color;
+    for(let i=1;i<pts.length;i++){
+      const t=i/pts.length,sc=pts[i][2];
+      ctx.globalAlpha=(0.08+0.72*t)*(0.5+0.5*sc);
+      ctx.lineWidth=0.6+sc*0.9;
+      ctx.beginPath();ctx.moveTo(pts[i-1][0],pts[i-1][1]);ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();
+    }
+    const last=pts[pts.length-1];
+    ctx.globalAlpha=1;ctx.fillStyle=color;ctx.shadowBlur=10*last[2];
+    ctx.beginPath();ctx.arc(last[0],last[1],2.5*last[2],0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+  function animateCanvas(ctx,pool,w,h){
+    if(!ctx||!w||!h)return;
+    ctx.fillStyle=`rgba(1,8,16,${FADE_ALPHA})`;ctx.fillRect(0,0,w,h);
+    pool.forEach(t=>{
+      for(let s=0;s<4;s++){lorenzStep(t);t.pts3D.push(project3D(t.x,t.y,t.z,w,h,cameraAngle));if(t.pts3D.length>TRAIL_LEN)t.pts3D.shift();}
+      drawTrail3D(ctx,t.pts3D,t.color);
+    });
+  }
+  function resize(){const dpr=window.devicePixelRatio||1;if(mathCanvas&&mathCanvas.offsetParent!==null){const r=mathCanvas.parentElement.getBoundingClientRect();W=r.width||500;H=r.height||200;mathCanvas.width=W*dpr;mathCanvas.height=H*dpr;mathCanvas.style.width=W+'px';mathCanvas.style.height=H+'px';if(mathCtx)mathCtx.setTransform(dpr,0,0,dpr,0,0);}if(mathCanvasTrue&&mathCanvasTrue.offsetParent!==null){const r=mathCanvasTrue.parentElement.getBoundingClientRect();Wt=r.width||500;Ht=r.height||200;mathCanvasTrue.width=Wt*dpr;mathCanvasTrue.height=Ht*dpr;mathCanvasTrue.style.width=Wt+'px';mathCanvasTrue.style.height=Ht+'px';if(mathCtxTrue)mathCtxTrue.setTransform(dpr,0,0,dpr,0,0);}}
+  function loop(){const dpr=window.devicePixelRatio||1;requestAnimationFrame(loop);cameraAngle+=0.004;if(mathCtx)mathCtx.setTransform(dpr,0,0,dpr,0,0);animateCanvas(mathCtx,trails,W,H);if(mathCtxTrue)mathCtxTrue.setTransform(dpr,0,0,dpr,0,0);animateCanvas(mathCtxTrue,trailsTrue,Wt,Ht);const tE=$('lorenz-traj'),tET=$('lorenz-traj-true');if(tE)tE.textContent='TRAJ:'+trails.length;if(tET)tET.textContent='TRAJ:'+trailsTrue.length;}
+  window.addEventListener('load',()=>{
+    mathCanvas=$('math-canvas');mathCtx=mathCanvas&&mathCanvas.getContext('2d');
+    mathCanvasTrue=$('math-canvas-true');mathCtxTrue=mathCanvasTrue&&mathCanvasTrue.getContext('2d');
+    resize();window.addEventListener('resize',resize);
+    spawnTrail(trails,0.1,0,0,SIGMA_BASE,PALETTE[0]);
+    spawnTrail(trailsTrue,0.5,0.5,10,SIGMA_BASE,PALETTE[2]);
+    loop();
+  });
+  window.injectBytesMath=function(hex){const b=hexToBytes(hex);if(b.length<4)return;spawnTrail(trails,byteToRange(b[0],-15,15),byteToRange(b[1],-15,15),byteToRange(b[2],5,40),SIGMA_BASE+byteToRange(b[3],-3,3),PALETTE[trails.length%PALETTE.length]);};
+  window.injectBytesMathTrue=function(hex){const b=hexToBytes(hex);if(b.length<4)return;spawnTrail(trailsTrue,byteToRange(b[0],-15,15),byteToRange(b[1],-15,15),byteToRange(b[2],5,40),SIGMA_BASE+byteToRange(b[3],-3,3),PALETTE[trailsTrue.length%PALETTE.length]);};
+})();
+
+// ────────────────────────────────────────────────────────────
+//  ESCHER 6-PASS METAMORPHOSIS  (bottom half)
+// ────────────────────────────────────────────────────────────
+(function(){
+  let ec,ectx,ect,ectxt,ecOde,ectxOde,ecOdeT,ectxOdeT;
+  let EW,EH,EWt,EHt,EOW,EOH,EOWt,EOHt,tick=0,complexityLevel=0,odeMode=0;
+  const COMPLEXITY_RATE=0.002;
+  let entropyBuf=new Uint8Array(64).fill(128);
+  let entropyBufT=new Uint8Array(64).fill(64);
+  let passBufs=Array.from({length:6},()=>new Uint8Array(64).fill(0));
+  let passBufsT=Array.from({length:6},()=>new Uint8Array(64).fill(0));
+  const C={bg:"#010810",accent:"#00d4ff",escher:"#c084fc",ok:"#22c55e",warn:"#f59e0b",danger:"#ef4444"};
+  const PASSES=[{name:"FOLD",color:C.accent},{name:"ROTATE",color:C.escher},{name:"FALL",color:C.ok},{name:"BRAID",color:C.warn},{name:"SCATTER",color:C.danger},{name:"SEAL",color:"#ffffff"}];
+  function hexToBytes(hex){const b=new Uint8Array(Math.floor(hex.length/2));for(let i=0;i<b.length;i++)b[i]=parseInt(hex.slice(i*2,i*2+2),16);return b;}
+  function runPipeline(raw,bufs){const p1=raw.slice(),half=Math.floor(p1.length/2);for(let i=0;i<half;i++)p1[i]^=p1[p1.length-1-i];bufs[0]=p1;const p2=p1.slice(),rot=p2[0]%8;for(let i=0;i<p2.length;i++)p2[i]=((p2[i]<<rot)|(p2[i]>>(8-rot)))&0xff;bufs[1]=p2;const p3=p2.slice();for(let i=1;i<p3.length;i++)p3[i]=(p3[i]+p3[i-1])&0xff;bufs[2]=p3;const p4=new Uint8Array(p3.length),evs=p3.filter((_,i)=>i%2===0),ods=p3.filter((_,i)=>i%2!==0);for(let i=0;i<p4.length;i++)p4[i]=i<evs.length?evs[i]:ods[i-evs.length];bufs[3]=p4;crypto.subtle.digest("SHA-256",p4).then(h=>{const hb=new Uint8Array(h),p5=p4.slice();for(let i=0;i<p5.length;i++)p5[i]^=hb[i%hb.length];bufs[4]=p5;return crypto.subtle.digest("SHA-256",p5);}).then(f=>{bufs[5]=new Uint8Array(f);});}
+  function tanh2(t){return Math.tanh(t*2.5)/Math.tanh(2.5);}
+  function lerpColor(h1,h2,t){const r1=parseInt(h1.slice(1,3),16),g1=parseInt(h1.slice(3,5),16),b1=parseInt(h1.slice(5,7),16),r2=parseInt(h2.slice(1,3),16),g2=parseInt(h2.slice(3,5),16),b2=parseInt(h2.slice(5,7),16);return`rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;}
+  function h2rgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${Math.min(1,a).toFixed(3)})`;}
+  function drawDisk(ctx,w,h,bufs,cplx){
+    const cx=w/2,cy=h/2,R=Math.min(w,h)*0.38,sa=(Math.PI*2)/6;
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,R);grd.addColorStop(0,"rgba(1,8,16,1)");grd.addColorStop(1,"rgba(0,212,255,0.06)");ctx.fillStyle=grd;ctx.fillRect(0,0,w,h);
+    for(let s=0;s<6;s++){const mid=s*sa-Math.PI/2+sa/2,buf=bufs[s];ctx.save();ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,s*sa-Math.PI/2,(s+1)*sa-Math.PI/2);ctx.closePath();ctx.clip();drawSector(ctx,s,cx,cy,R,mid,buf,cplx);ctx.restore();}
+    ctx.strokeStyle="rgba(0,212,255,0.2)";ctx.lineWidth=1;for(let s=0;s<6;s++){const a=s*sa-Math.PI/2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();}
+    // central hub
+    const pulse=0.7+0.3*Math.sin(tick*0.04),hubR=R*0.06;
+    const hg=ctx.createRadialGradient(cx,cy,0,cx,cy,hubR*2);hg.addColorStop(0,`rgba(0,212,255,${(0.9*pulse).toFixed(2)})`);hg.addColorStop(1,"rgba(0,212,255,0)");ctx.fillStyle=hg;ctx.beginPath();ctx.arc(cx,cy,hubR*2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=C.accent;ctx.shadowColor=C.accent;ctx.shadowBlur=12*pulse;ctx.beginPath();ctx.arc(cx,cy,hubR,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // boundary
+    ctx.strokeStyle=`rgba(0,212,255,${(0.25+0.1*Math.sin(tick*0.025)).toFixed(2)})`;ctx.lineWidth=2;ctx.shadowColor=C.accent;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+  }
+  function drawSector(ctx,s,cx,cy,R,mid,buf,cplx){
+    const lv=Math.max(3,Math.floor(cplx*1.5)+3);
+    if(s===0){// FOLD
+      ctx.strokeStyle=PASSES[0].color;ctx.lineWidth=0.8;
+      for(let i=1;i<=lv;i++){const t=i/(lv+1),bend=buf[i%buf.length]/255,r=R*t,al=0.15+(buf[(i+1)%buf.length]/255)*0.45;for(const sg of[-1,1]){const a0=mid+sg*0.08,a1=mid+sg*(Math.PI/6)*(0.5+bend*0.5);ctx.globalAlpha=al;ctx.beginPath();ctx.moveTo(cx,cy);ctx.quadraticCurveTo(cx+Math.cos(a0)*r,cy+Math.sin(a0)*r,cx+Math.cos(a1)*R*t,cy+Math.sin(a1)*R*t);ctx.stroke();}}
+      ctx.globalAlpha=0.5+0.4*Math.abs(Math.sin(tick*0.025));ctx.lineWidth=1.6;ctx.shadowColor=PASSES[0].color;ctx.shadowBlur=7;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(mid)*R,cy+Math.sin(mid)*R);ctx.stroke();ctx.globalAlpha=1;
+    }else if(s===1){// ROTATE
+      const rings=Math.max(2,Math.floor(cplx)+2),rs=tick*0.012+buf[0]*0.02,sa2=mid-Math.PI/6,ea2=mid+Math.PI/6;
+      ctx.strokeStyle=PASSES[1].color;for(let r=1;r<=rings;r++){const radius=(R*r)/(rings+1),er=(buf[r%buf.length]/255)*Math.PI*0.5;ctx.globalAlpha=0.2+0.6*(r/rings);ctx.lineWidth=0.9+(r/rings)*0.5;ctx.beginPath();ctx.arc(cx,cy,radius,sa2+rs+er,ea2+rs+er);ctx.stroke();}
+      const sp=mid+Math.sin(tick*0.02)*0.3+(buf[1]/255)*0.4;ctx.globalAlpha=0.55;ctx.lineWidth=1.4;ctx.shadowColor=PASSES[1].color;ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(cx+Math.cos(sp)*R*0.1,cy+Math.sin(sp)*R*0.1);ctx.lineTo(cx+Math.cos(sp)*R*0.85,cy+Math.sin(sp)*R*0.85);ctx.stroke();ctx.globalAlpha=1;
+    }else if(s===2){// FALL
+      const strips=Math.max(4,Math.floor(cplx*3)+4),sa2=mid-Math.PI/7,ea2=mid+Math.PI/7;
+      for(let i=0;i<strips;i++){const t=i/strips,val=buf[i%buf.length]/255,r0=R*t,r1=r0+(R/strips)*0.85;ctx.beginPath();ctx.arc(cx,cy,r1,sa2,ea2);ctx.arc(cx,cy,r0,ea2,sa2,true);ctx.closePath();ctx.fillStyle=val<0.4?h2rgba(C.ok,val*0.8+0.1):val<0.75?h2rgba(C.warn,val*0.7+0.1):h2rgba(C.danger,0.5);ctx.fill();if(i===Math.floor((tick*0.05)%strips)){ctx.strokeStyle=PASSES[2].color;ctx.lineWidth=2;ctx.globalAlpha=0.8;ctx.shadowColor=PASSES[2].color;ctx.shadowBlur=7;ctx.stroke();ctx.globalAlpha=1;ctx.shadowBlur=0;}}
+    }else if(s===3){// BRAID
+      const threads=Math.max(2,Math.floor(cplx*0.8)+2),steps=Math.max(3,Math.floor(cplx+3));ctx.strokeStyle=PASSES[3].color;ctx.lineWidth=0.9;
+      for(let th=0;th<threads;th++){const val=buf[th%buf.length]/255,ao=(th/threads-0.5)*(Math.PI/4),ba=mid+ao,r1=R*0.1+val*R*0.2;ctx.globalAlpha=th%2===0?0.6:0.35;ctx.setLineDash(th%2===0?[]:[4,4]);ctx.beginPath();for(let st=0;st<=steps;st++){const t=st/steps,r=r1+t*(R*0.85-r1),z=(st%2===0?1:-1)*0.12*(1-t),a=ba+z+Math.sin(tick*0.01+th)*0.05;st===0?ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r):ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);}ctx.stroke();}
+      ctx.setLineDash([]);ctx.globalAlpha=1;
+    }else if(s===4){// SCATTER
+      const particles=Math.max(8,Math.floor(cplx*12)+8);
+      for(let i=0;i<particles;i++){const b0=buf[(i*3)%buf.length],b1=buf[(i*3+1)%buf.length],b2=buf[(i*3+2)%buf.length],r=R*0.1+(b0/255)*R*0.85,a=mid-Math.PI/6+(b1/255)*(Math.PI/3),px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r,sz=1+(b2/255)*(1.5+cplx*0.3);ctx.globalAlpha=0.3+(b0/255)*0.6;ctx.fillStyle=PASSES[4].color;ctx.shadowColor=PASSES[4].color;ctx.shadowBlur=4;ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();}
+      const wR=R*0.1+((tick*0.8+buf[0])%(R*0.9));ctx.globalAlpha=0.2*(1-wR/R);ctx.strokeStyle=PASSES[4].color;ctx.lineWidth=1;ctx.shadowBlur=0;ctx.beginPath();ctx.arc(cx,cy,wR,mid-Math.PI/6,mid+Math.PI/6);ctx.stroke();ctx.globalAlpha=1;
+    }else{// SEAL
+      const lvs=Math.max(2,Math.floor(cplx*1.5)+2);
+      for(let lv=0;lv<lvs;lv++){const t=(lv+1)/(lvs+1),hR=tanh2(t)*R,val=buf[lv%buf.length]/255;ctx.globalAlpha=0.15+val*0.55;ctx.strokeStyle=lerpColor(C.escher,"#ffffff",lv/lvs);ctx.lineWidth=1+val;ctx.shadowColor=PASSES[5].color;ctx.shadowBlur=4;ctx.beginPath();ctx.arc(cx,cy,hR,mid-Math.PI/6,mid+Math.PI/6);ctx.stroke();}
+      const bC=Math.min(8,buf.length),bSR=R*0.2;ctx.globalAlpha=0.75;
+      for(let i=0;i<bC;i++){const val=buf[i]/255,bL=val*0.4+0.05,a=mid-Math.PI/8+(i/bC)*(Math.PI/4),x0=cx+Math.cos(a)*bSR,y0=cy+Math.sin(a)*bSR,x1=cx+Math.cos(a)*(bSR+bL*R*0.5),y1=cy+Math.sin(a)*(bSR+bL*R*0.5);ctx.strokeStyle=lerpColor(C.escher,C.accent,val);ctx.lineWidth=3;ctx.shadowColor=C.accent;ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();}
+      ctx.globalAlpha=1;
+    }
+  }
+  function drawEscherOde(ctx,w,h,cplx,t){
+    const cx=w/2,cy=h/2,maxR=Math.min(w,h)*0.47;
+    const SYM=6,sa=(Math.PI*2)/SYM;
+    const rings=Math.max(1,Math.ceil(cplx*0.65)+1);
+    const morph=Math.min(1,cplx/9);
+    for(let ring=0;ring<rings;ring++){
+      const r0=ring===0?0:maxR*ring/rings*0.97;
+      const r1=maxR*(ring+1)/rings*0.97;
+      const spd=t*0.0016*(ring%2===0?1:-0.7);
+      const rm=Math.min(1,morph*(1+ring/Math.max(rings-1,1))*0.6);
+      const curve=rm*0.4;
+      for(let s=0;s<SYM;s++){
+        const a0=s*sa+spd-Math.PI/2,a1=(s+1)*sa+spd-Math.PI/2,mid=(a0+a1)/2;
+        const isLight=(ring+s)%2===0;
+        const bulge=isLight?curve:-curve;
+        ctx.save();ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a0)*r0,cy+Math.sin(a0)*r0);
+        ctx.lineTo(cx+Math.cos(a0)*r1,cy+Math.sin(a0)*r1);
+        ctx.quadraticCurveTo(cx+Math.cos(mid)*r1*(1+bulge*0.45),cy+Math.sin(mid)*r1*(1+bulge*0.45),cx+Math.cos(a1)*r1,cy+Math.sin(a1)*r1);
+        ctx.lineTo(cx+Math.cos(a1)*r0,cy+Math.sin(a1)*r0);
+        if(ring>0){ctx.quadraticCurveTo(cx+Math.cos(mid)*r0*(1-bulge*0.35),cy+Math.sin(mid)*r0*(1-bulge*0.35),cx+Math.cos(a0)*r0,cy+Math.sin(a0)*r0);}
+        else{ctx.lineTo(cx,cy);}
+        ctx.closePath();
+        ctx.globalAlpha=0.82;
+        if(isLight){const h3=s%3;ctx.fillStyle=h3===0?'#00d4ff':h3===1?'#c084fc':'#22c55e';}
+        else{ctx.fillStyle='#010810';}
+        ctx.fill();
+        ctx.globalAlpha=0.18+rm*0.28;ctx.strokeStyle=isLight?'#00d4ff':'#c084fc';ctx.lineWidth=0.7;ctx.stroke();
+        ctx.restore();
+      }
+      if(cplx>5.5){
+        const da=Math.min(0.45,(cplx-5.5)/5);
+        for(let s=0;s<SYM;s++){
+          const a0=s*sa+spd-Math.PI/2,a1=(s+1)*sa+spd-Math.PI/2,mid=(a0+a1)/2;
+          ctx.save();ctx.globalAlpha=da;ctx.strokeStyle=(ring+s)%2===0?'rgba(0,212,255,0.6)':'rgba(192,132,252,0.6)';ctx.lineWidth=0.5;
+          ctx.beginPath();ctx.moveTo(cx+Math.cos(mid)*r0*1.05,cy+Math.sin(mid)*r0*1.05);ctx.lineTo(cx+Math.cos(mid)*r1*0.88,cy+Math.sin(mid)*r1*0.88);ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+    const hubR=maxR*0.038,pulse=0.65+0.35*Math.sin(t*0.04);
+    const hg=ctx.createRadialGradient(cx,cy,0,cx,cy,hubR*4);
+    hg.addColorStop(0,`rgba(0,212,255,${(0.85*pulse).toFixed(2)})`);hg.addColorStop(1,'rgba(0,212,255,0)');
+    ctx.fillStyle=hg;ctx.beginPath();ctx.arc(cx,cy,hubR*4,0,Math.PI*2);ctx.fill();
+    if(cplx>4){
+      const a=Math.min(0.45,(cplx-4)/6);
+      ctx.save();ctx.globalAlpha=a;ctx.strokeStyle='#00d4ff';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(cx,cy,maxR*0.97,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
+  }
+  function drawEscherSpiral(ctx,w,h,cplx,t){
+    const cx=w/2,cy=h/2,maxR=Math.min(w,h)*0.47,PHI=1.6180339887;
+    const arms=Math.max(3,Math.floor(cplx*0.5)+3);
+    const COLS=["#00d4ff","#c084fc","#22c55e","#f59e0b","#ef4444","#38bdf8"];
+    for(let arm=0;arm<arms;arm++){
+      const aOff=(arm/arms)*Math.PI*2+t*0.007*(arm%2===0?1:-PHI+1);
+      ctx.save();ctx.beginPath();
+      let r=3,a=aOff;
+      ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+      for(let i=0;i<200&&r<maxR;i++){a+=0.065+cplx*0.003;r*=1+(PHI-1)*0.011;ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);}
+      ctx.strokeStyle=COLS[arm%COLS.length];ctx.lineWidth=0.7+(cplx/10)*1.0;
+      ctx.globalAlpha=0.35+0.5*Math.abs(Math.sin(t*0.013+arm*1.1));
+      ctx.shadowColor=COLS[arm%COLS.length];ctx.shadowBlur=5;ctx.stroke();ctx.restore();
+    }
+    // counter-spiral overlay at high complexity
+    if(cplx>4){const a2=Math.min(0.5,(cplx-4)/6);for(let arm=0;arm<3;arm++){ctx.save();ctx.beginPath();let r=maxR*0.85,a=t*-0.005+arm*(Math.PI*2/3);for(let i=0;i<180&&r>3;i++){a+=0.068;r*=0.989;ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);}ctx.strokeStyle='#c084fc';ctx.lineWidth=0.5;ctx.globalAlpha=a2*0.6;ctx.stroke();ctx.restore();}}
+    const pulse=0.65+0.35*Math.sin(t*0.04),hubR=maxR*0.045;
+    const hg=ctx.createRadialGradient(cx,cy,0,cx,cy,hubR*3);
+    hg.addColorStop(0,`rgba(192,132,252,${(0.9*pulse).toFixed(2)})`);hg.addColorStop(1,'rgba(192,132,252,0)');
+    ctx.fillStyle=hg;ctx.beginPath();ctx.arc(cx,cy,hubR*3,0,Math.PI*2);ctx.fill();
+  }
+  function drawEscherWave(ctx,w,h,cplx,t){
+    const cx=w/2,cy=h/2,maxR=Math.min(w,h)*0.47;
+    const rings=Math.max(4,Math.floor(cplx*2)+4);
+    const freq=Math.max(3,3+Math.floor(cplx/2.5));
+    const COLS=["#00d4ff","#c084fc","#22c55e"];
+    for(let ring=0;ring<rings;ring++){
+      const r=(ring+1)/(rings+1)*maxR,phase=t*0.011*(ring%2===0?1:-0.7);
+      const pts=72+Math.floor(cplx*6);
+      ctx.beginPath();
+      for(let i=0;i<=pts;i++){
+        const a=(i/pts)*Math.PI*2,wave=Math.sin(a*freq+phase)*r*(0.055+cplx*0.008);
+        const rr=r+wave,x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      const t01=ring/rings;
+      ctx.strokeStyle=COLS[ring%COLS.length];ctx.lineWidth=0.6+(1-t01)*0.9;
+      ctx.globalAlpha=0.2+t01*0.6;ctx.shadowColor=COLS[ring%COLS.length];ctx.shadowBlur=3;
+      ctx.stroke();ctx.globalAlpha=1;ctx.shadowBlur=0;
+    }
+    const spokes=Math.max(4,Math.floor(cplx/1.8)+4);
+    for(let s=0;s<spokes;s++){
+      const a=(s/spokes)*Math.PI*2+t*0.005;
+      ctx.save();ctx.globalAlpha=0.12;ctx.strokeStyle='#00d4ff';ctx.lineWidth=0.5;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);ctx.stroke();ctx.restore();
+    }
+    const pulse=0.65+0.35*Math.sin(t*0.04),hubR=maxR*0.045;
+    const hg=ctx.createRadialGradient(cx,cy,0,cx,cy,hubR*3);
+    hg.addColorStop(0,`rgba(34,197,94,${(0.9*pulse).toFixed(2)})`);hg.addColorStop(1,'rgba(34,197,94,0)');
+    ctx.fillStyle=hg;ctx.beginPath();ctx.arc(cx,cy,hubR*3,0,Math.PI*2);ctx.fill();
+  }
+  function resize(){const dpr=window.devicePixelRatio||1;if(ec&&ec.offsetParent!==null){const r=ec.parentElement.getBoundingClientRect();EW=r.width||400;EH=r.height||200;ec.width=EW*dpr;ec.height=EH*dpr;ec.style.width=EW+'px';ec.style.height=EH+'px';if(ectx)ectx.setTransform(dpr,0,0,dpr,0,0);}if(ect&&ect.offsetParent!==null){const r=ect.parentElement.getBoundingClientRect();EWt=r.width||400;EHt=r.height||200;ect.width=EWt*dpr;ect.height=EHt*dpr;ect.style.width=EWt+'px';ect.style.height=EHt+'px';if(ectxt)ectxt.setTransform(dpr,0,0,dpr,0,0);}if(ecOde&&ecOde.offsetParent!==null){const r=ecOde.parentElement.getBoundingClientRect();EOW=r.width||400;EOH=r.height||200;ecOde.width=EOW*dpr;ecOde.height=EOH*dpr;ecOde.style.width=EOW+'px';ecOde.style.height=EOH+'px';if(ectxOde)ectxOde.setTransform(dpr,0,0,dpr,0,0);}if(ecOdeT&&ecOdeT.offsetParent!==null){const r=ecOdeT.parentElement.getBoundingClientRect();EOWt=r.width||400;EOHt=r.height||200;ecOdeT.width=EOWt*dpr;ecOdeT.height=EOHt*dpr;ecOdeT.style.width=EOWt+'px';ecOdeT.style.height=EOHt+'px';if(ectxOdeT)ectxOdeT.setTransform(dpr,0,0,dpr,0,0);}}
+  function loop(){const dpr=window.devicePixelRatio||1;requestAnimationFrame(loop);tick++;if(complexityLevel<10)complexityLevel+=COMPLEXITY_RATE;
+    if(ectx&&EW&&EH){ectx.setTransform(dpr,0,0,dpr,0,0);ectx.fillStyle=C.bg;ectx.fillRect(0,0,EW,EH);drawDisk(ectx,EW,EH,passBufs,complexityLevel);}
+    if(ectxt&&EWt&&EHt){ectxt.setTransform(dpr,0,0,dpr,0,0);ectxt.fillStyle=C.bg;ectxt.fillRect(0,0,EWt,EHt);drawDisk(ectxt,EWt,EHt,passBufsT,complexityLevel);}
+    const _odeF=[drawEscherOde,drawEscherSpiral,drawEscherWave][odeMode]||drawEscherOde;
+    if(ectxOde&&EOW&&EOH){ectxOde.setTransform(dpr,0,0,dpr,0,0);ectxOde.fillStyle=C.bg;ectxOde.fillRect(0,0,EOW,EOH);_odeF(ectxOde,EOW,EOH,complexityLevel,tick);}
+    if(ectxOdeT&&EOWt&&EOHt){ectxOdeT.setTransform(dpr,0,0,dpr,0,0);ectxOdeT.fillStyle=C.bg;ectxOdeT.fillRect(0,0,EOWt,EOHt);_odeF(ectxOdeT,EOWt,EOHt,complexityLevel,tick);}
+    const cb=$('cplx-bar'),cv=$('cplx-val'),cbt=$('cplx-bar-true'),cvt=$('cplx-val-true');
+    const cpPct=(complexityLevel/10*100).toFixed(1)+'%';
+    if(cb)cb.style.width=cpPct;if(cv)cv.textContent=complexityLevel.toFixed(2)+'/10';
+    if(cbt)cbt.style.width=cpPct;if(cvt)cvt.textContent=complexityLevel.toFixed(2)+'/10';
+  }
+  window.addEventListener('load',()=>{
+    ec=$('escher-canvas');ectx=ec&&ec.getContext('2d');
+    ect=$('escher-canvas-true');ectxt=ect&&ect.getContext('2d');
+    ecOde=$('escher-ode-canvas');ectxOde=ecOde&&ecOde.getContext('2d');
+    ecOdeT=$('escher-ode-canvas-true');ectxOdeT=ecOdeT&&ecOdeT.getContext('2d');
+    resize();window.addEventListener('resize',resize);
+    runPipeline(entropyBuf.slice(),passBufs);runPipeline(entropyBufT.slice(),passBufsT);
+    loop();initSpark();
+  });
+  window.injectBytesEscher=function(hex){const b=hexToBytes(hex);if(!b.length)return;for(let i=0;i<64;i++)entropyBuf[i]=b[i%b.length];runPipeline(entropyBuf.slice(),passBufs);};
+  window.injectBytesEscherTrue=function(hex){const b=hexToBytes(hex);if(!b.length)return;for(let i=0;i<64;i++)entropyBufT[i]=b[i%b.length];runPipeline(entropyBufT.slice(),passBufsT);};
+  window.setOdeMode=function(m){odeMode=m;[0,1,2].forEach(i=>{['ode-btn-'+i,'ode-t-'+i].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.toggle('active',i===m);});});};
+})();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeSDRModal(); }
+});
+
+// ── SOVEREIGN TOOLS ──
+const PP_WORDS = 'able acid aged also area army away baby back ball band bank base bath bear beat been bell belt best bird bite blue boat body bone book born both bull burn busy call calm came card care case cash cast cave city clam clan claw clay clod clot club coal coat code coil cold come cone cook cool copy cord core cork corn cost coup cozy crab crop crow cure curl dame dark dart data dawn days dead deaf deal dear deck deed deep deny desk dial dice died diet dirt disk dive dock does doll dome door dose dots dove down draw drum dual dull dune dusk dust each earl earn east edge else emit envy epic even evil exam exit face fact fail fair fake fall fame farm fast fate fawn fear feet fell felt fend fern file fill fine firm fish fist five flag flat flaw flea flew flip flow foam foil folk fond food fool foot ford fore fork form fort foul free frog from fuel full fund fury fuse fuss gain gale game gang gate gave gaze gear gene gift gilt give glad glee glob glue gnat goal gold golf gone gore gown grab grad gray grew grid grin grip grow grub gulf guru hack half hall halt hand hang hard harm harp hash hate have hawk heap heat heel help hemp herd here hide high hill hint hire hive hold hole home hone hood hook hope horn host hour huge hull hump hung hunt icon idle inch into iron jade jail jerk jest join joke jolt jump junk just keen keep kept kind king kink knit knob knot lace lack laid lake lamp land lane last late lawn lead leaf lean left lend lens lent less lick lift like limb lime limp line link lion list live load loam loft lone long look loop lore lose loss lost loud love luck lump lung lust mace made mail make mall mane many mark mask mate math maze meal meld melt mend mesh mild mill mind mine mint mist mock mode mold mole moon more morn moth move mule murk myth nail name nave navy need next nice nick nine node none noon nook norm nose note noun nude oaks oath odds omen once only onto open opus orca oven over pack paid pair palm pang park part past path pave peak peel peer pelt pest pick pier pike pile pill pine pint pipe pith plan play plea plod plot plow plug plum plus poem poet poke pole poll pond pore port pose pour prey prod prop pull pump pure push race rack rage rain rake ramp rang rank rant rare rash rate rave read real reed reef rely rent rest rice rich ride rift ring riot ripe risk road roam roar robe rock rode role roll roof room root rose rule rune rung rush rust safe sage sail sake salt same sand sane sang sank sash save scan scar seam seed seep self sell send sent shed shin ship shop shot show shut sick side sigh silk sill sink sire site size skid skin skip slim slip smug snag snap snob snow soak soar soil sold sole some song sort soul sour span spar spin spit spot spur star stem step stew stir stop stub stun sung sunk sure surf swim tale talk tall tame tang tape task taut tend term than them then tile till time tint tire toad told toll tomb tome tone took tore torn toss tote town trim trip trod true tube tuck tuft turn twin type ugly undo unit upon user vale vane vary vast veil vend vent verb vest view void volt vote wade wage wail wait wake walk wall wand want ward warm warn warp wavy weal wean wear wick will wimp wind wine wire wise wish wisp wolf womb word work worm wove writ yawn year yell your zeal zinc zone zoom'.split(' ');
+
+function randBytes(n) {
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return b;
+}
+
+async function qrngFetch(n) {
+  try {
+    const r = await fetch('http://127.0.0.1:8888/api/bytes?n='+n, {signal:AbortSignal.timeout(1500)});
+    if (r.ok) {
+      const d = await r.json();
+      return new Uint8Array(d.hex.match(/.{2}/g).map(h=>parseInt(h,16)));
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function getBytes(n) {
+  const local = randBytes(n);
+  const vault = await qrngFetch(n);
+  if (vault) { for (let i=0;i<Math.min(local.length,vault.length);i++) local[i]^=vault[i]; }
+  return local;
+}
+
+function genPassword() {
+  const len = parseInt($('pw-len').value);
+  const useU = $('pw-upper').checked, useN = $('pw-nums').checked,
+        useS = $('pw-sym').checked,   urlS = $('pw-safe').checked;
+  let chars = 'abcdefghijklmnopqrstuvwxyz';
+  if (useU) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if (useN) chars += '0123456789';
+  if (useS) chars += urlS ? '-_.~!*()\'' : '!@#$%^&*()-_=+[]{}|;:,.<>?';
+  const bytes = randBytes(len*3);
+  let pw='', bi=0;
+  const cap = Math.floor(256/chars.length)*chars.length;
+  while (pw.length < len && bi < bytes.length) {
+    const v=bytes[bi++]; if (v < cap) pw += chars[v%chars.length];
+  }
+  while (pw.length < len) { pw += chars[randBytes(1)[0]%chars.length]; }
+  $('pw-output').textContent = pw;
+  $('pw-bits').textContent = Math.floor(len*Math.log2(chars.length)) + ' bits';
+  setTimeout(() => openVaultSave('pw-output', 'PASSWORD'), 80);
+}
+
+function genUUID() {
+  const b=randBytes(16);
+  b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
+  const h=Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+  const u=`${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  $('uuid-output').textContent = u;
+  $('uuid-multi').innerHTML = '';
+}
+
+function genUUIDBatch() {
+  genUUID();
+  const box = $('uuid-multi');
+  box.innerHTML = '';
+  for (let i=0;i<9;i++) {
+    const b=randBytes(16);
+    b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
+    const h=Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+    const u=`${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+    const d=document.createElement('div');
+    d.className='tool-output';d.style.fontSize='var(--sz-xs)';d.style.padding='4px 8px';
+    d.textContent=u;box.appendChild(d);
+  }
+}
+
+function genPassphrase() {
+  const n=parseInt($('pp-words').value);
+  const bytes=randBytes(n*2);
+  const words=[];
+  for(let i=0;i<n;i++){
+    const idx=((bytes[i*2]<<8)|bytes[i*2+1])%PP_WORDS.length;
+    words.push(PP_WORDS[idx]);
+  }
+  $('pp-output').textContent = words.join(' — ');
+  $('pp-bits').textContent = Math.floor(n*Math.log2(PP_WORDS.length))+' bits';
+}
+
+let _coinH=0,_coinT=0;
+function flipCoin() {
+  const b=randBytes(1)[0],isH=b<128;
+  if(isH)_coinH++;else _coinT++;
+  $('coin-result').textContent=isH?'⬆ HEADS':'⬇ TAILS';
+  $('coin-result').style.color=isH?'var(--accent)':'var(--escher)';
+  const tot=_coinH+_coinT;
+  if(tot>1)$('coin-stats').textContent=`H:${_coinH} T:${_coinT} · ${(100*_coinH/tot).toFixed(1)}% H`;
+}
+
+function rollDie(sides) {
+  const b=randBytes(2),v=(((b[0]<<8)|b[1])%sides)+1;
+  $('dice-result').textContent=v;
+  $('dice-result').style.color=v===sides?'var(--ok)':v===1?'var(--danger)':'var(--accent)';
+}
+
+async function fetchEntropyBytes() {
+  const n=parseInt($('dl-size').value);
+  const el=$('dl-hex');
+  el.textContent='FETCHING…';
+  try {
+    const r=await fetch(`http://127.0.0.1:8888/api/bytes?n=${n}`,{signal:AbortSignal.timeout(3000)});
+    if(r.ok){const d=await r.json();el.textContent=d.hex;return;}
+  } catch(e){}
+  const b=randBytes(n);
+  el.textContent=Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+function copyTool(id,btn) {
+  const text=$(id).textContent;
+  if(!text||text.startsWith('—'))return;
+  navigator.clipboard.writeText(text).then(()=>{
+    const el=$(id);const oldBC=el.style.borderColor;
+    el.style.borderColor='var(--ok)';setTimeout(()=>el.style.borderColor=oldBC,1200);
+    if(btn){const orig=btn.textContent;btn.classList.add('copy-ok');btn.textContent='✓ COPIED';
+      setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copy-ok');},1800);}
+  });
+}
+
+function genRange() {
+  const lo = parseInt($('rng-min').value);
+  const hi = parseInt($('rng-max').value);
+  const out = $('rng-output');
+  if (isNaN(lo)||isNaN(hi)||lo>=hi) { out.textContent='MIN must be < MAX'; return; }
+  const range = BigInt(hi - lo + 1);
+  const bytes = randBytes(6);
+  const raw = BigInt('0x'+Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''));
+  out.textContent = String(lo + Number(raw % range));
+}
+
+// Slider live labels for tools
+['pw-len','pp-words','dl-size'].forEach(id=>{
+  const el=$(id);if(!el)return;
+  el.addEventListener('input',()=>{ const v=$(id+'-val');if(v)v.textContent=el.value; });
+});
+
+// ── SYSTEM ADVISOR ──
+const ADV_SYS = `You are SOVEREIGN ADVISOR, an AI assistant embedded in the SOVEREIGN QRNG dashboard.
+Hardware: HP laptop i3-1005G1, 8GB RAM, Windows 10. RTL-SDR: Nooelec SMArt XTR v5 E4000 tuner, libusbK driver via Zadig. RTL-SDR binary: C:\\QRNG_Pool\\rtlsdr_tools\\x64\\rtl_sdr.exe at 96.9 MHz 29dB 256KSPS. Cameras: HP TrueVision built-in CAM-A (NEAR), USB webcam CAM-B with laser (TRUE). Services: webcam_server:8090, near_entropy:8766, entropy_api:8888.
+Rules: respond with numbered steps only, 2-4 steps max, be direct and hardware-specific, no preamble.`;
+
+const ADV_STATIC = {
+  rtlsdr_offline: '1. Replug USB cable or try different port\n2. Open Zadig → select RTL2832U → install libusbK driver\n3. Restart near_entropy.py',
+  cam_offline:    '1. Check webcam_server.py is running on port 8090\n2. Replug the USB camera\n3. Run: python webcam_server.py',
+  audio_offline:  '1. Windows Settings → Sound → check microphone is not muted\n2. Settings → Privacy → Microphone → allow access\n3. Restart near_entropy.py',
+  low_entropy:    '1. Check all 4 sources show LIVE in NEAR QUANTUM tab\n2. RTL-SDR gain should be 29 dB — check near_entropy.py settings\n3. Move SDR antenna away from USB 3.0 cables (causes interference)',
+  vault_stall:    '1. Check C:\\QRNG_Pool\\ has free disk space\n2. Verify near_entropy.py is running on port 8766\n3. Check near_offset.txt contains a plain number (not corrupted)',
+};
+
+let _advPrev = {}, _advOllama = false, _vaultStallTicks = 0, _lastOffset = -1;
+
+async function _advCheckOllama() {
+  try {
+    const r = await fetch('http://localhost:11434/api/tags', {signal: AbortSignal.timeout(2000)});
+    _advOllama = r.ok;
+  } catch(e) { _advOllama = false; }
+  const tag = $('adv-ai-tag');
+  if (tag) { tag.className = 'adv-ai-tag' + (_advOllama ? '' : ' offline'); tag.title = _advOllama ? 'Ollama AI active — gemma2:2b' : 'Ollama offline — using static advisor'; }
+}
+
+async function _advStream(prompt, textEl) {
+  textEl.textContent = '';
+  try {
+    const r = await fetch('http://localhost:11434/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'gemma2:2b', messages:[{role:'system',content:ADV_SYS},{role:'user',content:prompt}], stream:true}),
+      signal: AbortSignal.timeout(30000)
+    });
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf='';
+    while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';for(const l of lines){if(!l.trim())continue;try{const j=JSON.parse(l);if(j.message?.content){textEl.textContent+=j.message.content;textEl.parentElement.scrollTop=textEl.parentElement.scrollHeight;}}catch(e){}}}
+  } catch(e) {}
+}
+
+function _advShowCard(evtType, title, prompt) {
+  const body=$('adv-body');
+  if(body.querySelector('[data-evt="'+evtType+'"]'))return;
+  const card=document.createElement('div');
+  card.className='adv-card warn'; card.dataset.evt=evtType;
+  const textEl=document.createElement('div'); textEl.className='adv-text'; textEl.textContent='...';
+  const titleEl=document.createElement('div'); titleEl.className='adv-card-title'; titleEl.textContent=title;
+  const btn=document.createElement('button'); btn.className='adv-dismiss'; btn.textContent='✕';
+  btn.onclick=()=>{card.remove();_advUpdateState();};
+  card.appendChild(titleEl); card.appendChild(textEl); card.appendChild(btn);
+  body.appendChild(card);
+  if(_advOllama) _advStream(prompt, textEl);
+  else textEl.textContent = ADV_STATIC[evtType]||'Check connections and service logs.';
+  _advUpdateState();
+}
+
+function _advRemoveCard(evtType) {
+  const card=$('adv-body').querySelector('[data-evt="'+evtType+'"]');
+  if(card)card.remove(); _advUpdateState();
+}
+
+function _advUpdateState() {
+  const warns=$('adv-body').querySelectorAll('.adv-card.warn').length;
+  const dot=$('adv-dot'),badge=$('adv-badge');
+  if(!dot)return;
+  if(warns>0){dot.className='adv-indicator warn';badge.textContent=warns+' ISSUE'+(warns>1?'S':'');}
+  else{dot.className='adv-indicator ok';badge.textContent='NOMINAL';}
+}
+
+function runAdvisor(d) {
+  if(!d)return;
+  const src=d.sources||{};
+  const sdr0=src.sdr0?.status==='LIVE', cam=src.cam?.status==='LIVE', audio=src.audio?.status==='LIVE';
+  const bps=d.bits_per_sec||0, offset=d.vault_offset||0;
+
+  if(!sdr0&&_advPrev.sdr0!==false) _advShowCard('rtlsdr_offline','RTL-SDR OFFLINE','RTL-SDR [0] has gone offline on the HP laptop. Nooelec SMArt XTR v5, libusbK driver. Most likely causes and fix steps?');
+  else if(sdr0&&_advPrev.sdr0===false) _advRemoveCard('rtlsdr_offline');
+
+  if(!cam&&_advPrev.cam!==false) _advShowCard('cam_offline','CAMERA OFFLINE','Built-in HP TrueVision webcam CAM-A went offline in webcam_server on port 8090. What should user check?');
+  else if(cam&&_advPrev.cam===false) _advRemoveCard('cam_offline');
+
+  if(!audio&&_advPrev.audio!==false) _advShowCard('audio_offline','AUDIO OFFLINE','Microphone audio source went offline in near_entropy.py on Windows 10. Fix steps?');
+  else if(audio&&_advPrev.audio===false) _advRemoveCard('audio_offline');
+
+  if(bps>0&&bps<2000&&(_advPrev.bps||0)>=2000) _advShowCard('low_entropy','LOW ENTROPY RATE','Entropy dropped to '+Math.round(bps)+' bps. Sources: cam='+Math.round(src.cam?.bps_raw||0)+' sdr0='+Math.round(src.sdr0?.bps_raw||0)+' cpu='+Math.round(src.cpu?.bps_raw||0)+' audio='+Math.round(src.audio?.bps_raw||0)+'. Causes and fix?');
+  else if(bps>=2000&&(_advPrev.bps||0)<2000&&(_advPrev.bps||0)>0) _advRemoveCard('low_entropy');
+
+  if(offset===_lastOffset&&bps>500)_vaultStallTicks++;else _vaultStallTicks=0;
+  _lastOffset=offset;
+  if(_vaultStallTicks>=6&&!$('adv-body').querySelector('[data-evt="vault_stall"]')) _advShowCard('vault_stall','VAULT NOT FILLING','Vault offset unchanged for 60s despite active sources. Why might near_entropy.py fail to write to C:\\QRNG_Pool\\near_vault.bin?');
+  else if(_vaultStallTicks<3) _advRemoveCard('vault_stall');
+
+  _advPrev={sdr0,cam,audio,bps};
+}
+
+setTimeout(_advCheckOllama, 2500);
+setInterval(_advCheckOllama, 120000);
+
+// ── TRIPLE LOCK PURGE ──
+function checkPurgeLocks() {
+  const all = $('lock1').checked && $('lock2').checked && $('lock3').checked;
+  $('purge-btn').disabled = !all;
+}
+async function doPurge() {
+  const btn = $('purge-btn');
+  if (btn.disabled) return;
+  const orig = btn.textContent;
+  btn.textContent = 'PURGING...';
+  btn.disabled = true;
+  try { await fetch('/api/purge_near', {method:'POST'}); } catch(e) {}
+  ['lock1','lock2','lock3'].forEach(id => { $(id).checked = false; });
+  btn.textContent = orig;
+  btn.disabled = true;
+}
+
+// ── INTEL TAB: VISUAL HIERARCHY + DUAL CODING ──
+// ══════════════════════════════════════════════════════════
+//  NEGENTROPY TAB — DRBG + Recamán + Byte Heatmap
+// ══════════════════════════════════════════════════════════
+
+// ── Recamán Sequence Animator ──
+(function() {
+  const NEG = '#818cf8';
+  const ABOVE_COL = 'rgba(129,140,248,0.55)';
+  const BELOW_COL = 'rgba(192,132,252,0.40)';
+  let seq = [0], visited = new Set([0]);
+  let animFrame = 0, maxN = 0;
+  let cvR, ctxR;
+
+  function nextRecaman() {
+    const n = seq.length;
+    const prev = seq[n - 1];
+    const candidate = prev - n;
+    if (candidate > 0 && !visited.has(candidate)) {
+      seq.push(candidate);
+      visited.add(candidate);
+    } else {
+      seq.push(prev + n);
+      visited.add(prev + n);
+    }
+  }
+
+  function drawRecaman() {
+    if (!cvR || !ctxR) return;
+    const W = cvR.width, H = cvR.height;
+    ctxR.clearRect(0, 0, W, H);
+    if (seq.length < 3) return;
+    const visible = Math.min(seq.length, 60);
+    const mx = Math.max(...seq.slice(0, visible));
+    const mn = 0;
+    const range = mx - mn || 1;
+    const scaleX = W / (visible + 1);
+
+    const mapX = i => (i + 0.5) * scaleX;
+    const mapV = v => ((v - mn) / range) * (H - 20) + 10;
+
+    // draw baseline
+    ctxR.beginPath();
+    ctxR.strokeStyle = 'rgba(129,140,248,0.15)';
+    ctxR.lineWidth = 1;
+    const baseY = H * 0.62;
+    ctxR.moveTo(0, baseY); ctxR.lineTo(W, baseY);
+    ctxR.stroke();
+
+    // draw arcs
+    for (let i = 0; i < visible - 1; i++) {
+      const x1 = mapX(i), x2 = mapX(i + 1);
+      const v1 = seq[i], v2 = seq[i + 1];
+      const cx = (x1 + x2) / 2;
+      const rx = Math.abs(x2 - x1) / 2;
+      const y1 = baseY - ((v1 / range) * (H * 0.45));
+      const y2 = baseY - ((v2 / range) * (H * 0.45));
+      const cy = (y1 + y2) / 2;
+      const ry = Math.max(Math.abs(y2 - y1) / 2, rx * 0.15);
+      const above = v2 > v1;
+
+      const alpha = 0.2 + (i / visible) * 0.75;
+      ctxR.beginPath();
+      ctxR.strokeStyle = above
+        ? `rgba(129,140,248,${alpha})`
+        : `rgba(192,132,252,${alpha})`;
+      ctxR.lineWidth = 1 + (i / visible) * 1.5;
+      ctxR.ellipse(cx, cy, rx || 4, ry || 4, 0, 0, Math.PI * 2);
+      ctxR.stroke();
+
+      // dot at each term
+      if (i === visible - 2) {
+        ctxR.beginPath();
+        ctxR.fillStyle = NEG;
+        ctxR.arc(x2, baseY - ((v2 / range) * (H * 0.45)), 3, 0, Math.PI * 2);
+        ctxR.fill();
+      }
+    }
+
+    // counter label
+    ctxR.fillStyle = 'rgba(129,140,248,0.6)';
+    ctxR.font = '10px Courier New';
+    ctxR.textAlign = 'right';
+    ctxR.fillText('n=' + (seq.length - 1), W - 6, H - 5);
+  }
+
+  function recamanTick() {
+    if (!cvR) {
+      cvR = document.getElementById('recaman-canvas');
+      if (!cvR) return;
+      ctxR = cvR.getContext('2d');
+    }
+    const wrap = cvR.parentElement;
+    if (cvR.width !== wrap.clientWidth || cvR.height !== wrap.clientHeight) {
+      cvR.width = wrap.clientWidth || 400;
+      cvR.height = wrap.clientHeight || 160;
+    }
+    nextRecaman();
+    if (seq.length > 200) { seq = seq.slice(seq.length - 100); }
+    const nEl = document.getElementById('neg-seq-n');
+    if (nEl) nEl.textContent = 'n=' + (seq.length - 1 + maxN);
+    maxN += 1;
+    drawRecaman();
+  }
+  setInterval(recamanTick, 180);
+})();
+
+// ── Seeding Chain Flow Diagram ──
+(function() {
+  let cvF, ctxF, _seeded = false, _animT = 0;
+
+  const BOXES = [
+    {label:'NEAR VAULT', sub:'quantum source', rgb:[34,197,94]},
+    {label:'HMAC DRBG',  sub:'NIST 800-90A',  rgb:[129,140,248]},
+    {label:'∞ OUTPUT', sub:'infinite bytes', rgb:[6,182,212]},
+  ];
+  const ARROWS = ['seeds →', 'generates →'];
+
+  function drawFlow() {
+    if (!cvF) {
+      cvF = document.getElementById('neg-flow-canvas');
+      if (!cvF) return;
+      ctxF = cvF.getContext('2d');
+    }
+    if (cvF.offsetParent === null) return;
+    const W = cvF.clientWidth || 400, H = 54;
+    if (cvF.width !== W || cvF.height !== H) { cvF.width = W; cvF.height = H; }
+    ctxF.clearRect(0, 0, W, H);
+
+    const bW = Math.min(84, Math.floor(W * 0.21));
+    const gap = Math.max(28, Math.floor((W - bW * 3) / 2));
+    const bH = 28;
+    const sx = Math.floor((W - (bW * 3 + gap * 2)) / 2);
+    const sy = Math.floor((H - bH) / 2);
+    const xPos = [sx, sx + bW + gap, sx + (bW + gap) * 2];
+
+    _animT += 0.02;
+
+    // Arrows + flowing dots
+    for (let i = 0; i < 2; i++) {
+      const x1 = xPos[i] + bW, x2 = xPos[i + 1];
+      const my = sy + bH / 2;
+      const active = (i === 0) || _seeded;
+      const [r, g, b] = BOXES[i].rgb;
+      const al = active ? 0.45 : 0.1;
+
+      ctxF.beginPath();
+      ctxF.strokeStyle = `rgba(${r},${g},${b},${al})`;
+      ctxF.lineWidth = 1.5;
+      ctxF.moveTo(x1 + 2, my); ctxF.lineTo(x2 - 6, my);
+      ctxF.stroke();
+
+      ctxF.beginPath();
+      ctxF.fillStyle = `rgba(${r},${g},${b},${al + 0.1})`;
+      ctxF.moveTo(x2 - 6, my - 4); ctxF.lineTo(x2, my); ctxF.lineTo(x2 - 6, my + 4);
+      ctxF.closePath(); ctxF.fill();
+
+      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.5 : 0.18})`;
+      ctxF.font = "7px 'Courier New'";
+      ctxF.textAlign = 'center';
+      ctxF.fillText(ARROWS[i], (x1 + x2) / 2, my - 9);
+
+      if (active) {
+        for (let d = 0; d < 4; d++) {
+          const t = ((_animT + d * 0.25 + i * 0.5) % 1);
+          const px = x1 + 2 + (x2 - 8 - x1 - 2) * t;
+          const alpha = Math.sin(t * Math.PI) * 0.95;
+          ctxF.beginPath();
+          ctxF.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
+          ctxF.arc(px, my, 2.5, 0, Math.PI * 2);
+          ctxF.fill();
+        }
+      }
+    }
+
+    // Boxes
+    BOXES.forEach((box, i) => {
+      const x = xPos[i];
+      const [r, g, b] = box.rgb;
+      const active = (i === 0) || _seeded;
+      const al = active ? 0.8 : 0.25;
+
+      ctxF.fillStyle = `rgba(${r},${g},${b},0.06)`;
+      ctxF.strokeStyle = `rgba(${r},${g},${b},${active ? 0.65 : 0.18})`;
+      ctxF.lineWidth = active ? 1.5 : 1;
+      ctxF.beginPath(); ctxF.rect(x, sy, bW, bH); ctxF.fill(); ctxF.stroke();
+
+      if (active) {
+        ctxF.shadowColor = `rgba(${r},${g},${b},0.5)`;
+        ctxF.shadowBlur = 7;
+        ctxF.beginPath(); ctxF.rect(x, sy, bW, bH); ctxF.stroke();
+        ctxF.shadowBlur = 0;
+      }
+
+      ctxF.fillStyle = `rgba(${r},${g},${b},${al})`;
+      ctxF.font = "bold 7.5px 'Courier New'";
+      ctxF.textAlign = 'center';
+      ctxF.fillText(box.label, x + bW / 2, sy + bH / 2 - 2);
+      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.45 : 0.18})`;
+      ctxF.font = "6px 'Courier New'";
+      ctxF.fillText(box.sub, x + bW / 2, sy + bH / 2 + 9);
+    });
+  }
+
+  window._flowSetSeeded = s => { _seeded = !!s; };
+  setInterval(drawFlow, 50);
+})();
+
+// ── DRBG Byte Heatmap ──
+(function() {
+  let cvB, ctxB, heatData = new Uint8Array(256);
+
+  function drawHeat(bytes) {
+    if (!cvB) {
+      cvB = document.getElementById('neg-byte-canvas');
+      if (!cvB) return;
+      ctxB = cvB.getContext('2d');
+    }
+    const wrap = cvB.parentElement;
+    cvB.width = wrap.clientWidth || 400;
+    cvB.height = Math.max(30, (wrap.clientHeight || 120) - 24);
+    const W = cvB.width, H = cvB.height;
+    if (!bytes || !bytes.length) return;
+    for (let i = 0; i < bytes.length; i++) heatData[bytes[i]]++;
+    const mx = Math.max(...heatData, 1);
+    const bw = W / 256;
+    ctxB.clearRect(0, 0, W, H);
+
+    // Bars
+    for (let i = 0; i < 256; i++) {
+      const frac = heatData[i] / mx;
+      const h = frac * H;
+      const alpha = 0.15 + frac * 0.85;
+      ctxB.fillStyle = `rgba(129,140,248,${alpha.toFixed(2)})`;
+      ctxB.fillRect(i * bw, H - h, bw + 0.5, h);
+    }
+
+    // Ideal flat reference line (average count = what a uniform distribution would give)
+    const total = heatData.reduce((a, v) => a + v, 0);
+    if (total > 256) {
+      const avg = total / 256;
+      const idealY = H - (avg / mx) * H;
+      ctxB.beginPath();
+      ctxB.strokeStyle = 'rgba(34,197,94,0.6)';
+      ctxB.setLineDash([4, 4]);
+      ctxB.lineWidth = 1;
+      ctxB.moveTo(0, idealY); ctxB.lineTo(W, idealY);
+      ctxB.stroke();
+      ctxB.setLineDash([]);
+      ctxB.fillStyle = 'rgba(34,197,94,0.55)';
+      ctxB.font = "7px 'Courier New'";
+      ctxB.textAlign = 'left';
+      ctxB.fillText('IDEAL', 4, Math.max(idealY - 3, 9));
+    }
+  }
+  window._negHeatUpdate = drawHeat;
+})();
+
+// ── NEG Mode ──
+let _negMode = 0;
+const NEG_MODE_DESC = [
+  '🔢 Pure math. HMAC-SHA-256 DRBG — seeded once by your quantum vault, then self-sustaining. CPU-speed, infinite, always available even when vault is empty.',
+  '⚛ Raw quantum. Bytes pulled directly from near_vault.bin — physical randomness from cameras, RF, CPU jitter. Finite but highest quality.',
+  '⊕ Sovereign blend. DRBG bytes ⊕ quantum bytes, XORed together. If either source is somehow compromised, the XOR output stays secure — strongest option.',
+];
+const NEG_MODE_URLS = ['/api/neg/bytes', '/api/bytes', '/api/neg/blend'];
+
+function setNegMode(m) {
+  _negMode = m;
+  [0,1,2].forEach(i => {
+    const btn = document.getElementById('negm-' + i);
+    if (btn) btn.classList.toggle('active', i === m);
+  });
+  const desc = document.getElementById('neg-mode-desc');
+  if (desc) desc.textContent = NEG_MODE_DESC[m];
+}
+
+// ── NEG Generate ──
+let _negLastHex = '';
+async function negGenerate() {
+  const nEl = document.getElementById('neg-n');
+  const outEl = document.getElementById('neg-out');
+  const srcEl = document.getElementById('neg-last-src');
+  const n = Math.min(4096, Math.max(1, parseInt(nEl.value) || 32));
+  outEl.style.color = 'var(--muted)';
+  outEl.textContent = 'generating…';
+  const url = NEG_MODE_URLS[_negMode] + '?n=' + n;
+  try {
+    const r = await fetch('http://127.0.0.1:' + (_negMode === 0 ? '8767' : '8888') + url, {cache:'no-store'});
+    const d = await r.json();
+    _negLastHex = d.hex || '';
+    outEl.textContent = _negLastHex;
+    outEl.style.color = _negMode === 2 ? 'var(--escher)' : 'var(--neg)';
+    outEl.style.borderColor = _negMode === 2 ? 'var(--escher)' : 'var(--neg)';
+    setTimeout(() => { outEl.style.borderColor = ''; }, 1200);
+    const labels = ['HMAC-SHA-256-DRBG', 'NEAR-VAULT', 'QUANTUM⊕DRBG'];
+    if (srcEl) srcEl.textContent = labels[_negMode];
+    if (window._negHeatUpdate) {
+      const bytes = [];
+      for (let i = 0; i < _negLastHex.length; i += 2)
+        bytes.push(parseInt(_negLastHex.slice(i, i+2), 16));
+      window._negHeatUpdate(new Uint8Array(bytes));
+    }
+  } catch(e) {
+    outEl.textContent = _negMode === 0
+      ? 'neg_entropy.py offline — run process_manager.py'
+      : 'entropy_api.py offline';
+    outEl.style.color = 'var(--danger)';
+  }
+}
+
+function copyNeg() {
+  if (!_negLastHex || _negLastHex.startsWith('neg_entropy')) return;
+  navigator.clipboard.writeText(_negLastHex).then(() => {
+    const ok = document.getElementById('neg-copy-ok');
+    if (ok) { ok.textContent = '✓ COPIED'; ok.style.color = 'var(--ok)'; setTimeout(() => { ok.textContent = ''; }, 1800); }
+  });
+}
+
+// ── NEG Auto-stream ──
+let _negStreamInterval = null;
+function toggleNegStream() {
+  const btn = document.getElementById('neg-stream-btn');
+  const stat = document.getElementById('neg-stream-stat');
+  if (_negStreamInterval) {
+    clearInterval(_negStreamInterval);
+    _negStreamInterval = null;
+    if (btn) { btn.textContent = '▶ START AUTO'; btn.style.borderColor = ''; }
+    if (stat) stat.textContent = 'STOPPED';
+  } else {
+    _negStreamInterval = setInterval(negGenerate, 1200);
+    if (btn) { btn.textContent = '⏹ STOP'; btn.style.borderColor = 'var(--danger)'; btn.style.color = 'var(--danger)'; }
+    if (stat) { stat.textContent = 'STREAMING'; stat.style.color = 'var(--ok)'; }
+    negGenerate();
+  }
+}
+
+// ── NEG Reseed ──
+async function negReseed() {
+  const btn = document.getElementById('neg-reseed-btn');
+  const st = document.getElementById('neg-reseed-st');
+  if (btn) btn.disabled = true;
+  if (st) st.textContent = 'reseeding…';
+  try {
+    const r = await fetch('http://127.0.0.1:8767/api/neg/reseed', {method:'POST'});
+    if (r.ok) {
+      if (st) { st.textContent = '✓ RESEEDED'; st.style.color = 'var(--ok)'; }
+    } else {
+      if (st) { st.textContent = 'use auto-reseed'; st.style.color = 'var(--warn)'; }
+    }
+  } catch(e) {
+    if (st) { st.textContent = 'offline'; st.style.color = 'var(--danger)'; }
+  }
+  setTimeout(() => { if (btn) btn.disabled = false; if (st) st.textContent = ''; }, 3000);
+}
+
+// ── NEG Poll ──
+async function pollNeg() {
+  try {
+    const r = await fetch('http://127.0.0.1:8767/api/neg', {cache:'no-store', signal:AbortSignal.timeout(2000)});
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+
+    const dot = document.getElementById('neg-dot');
+    const badge = document.getElementById('neg-badge');
+    const seededEl = document.getElementById('nd-seeded');
+    const reseedBtn = document.getElementById('neg-reseed-btn');
+
+    window._negDrbgSeeded = !!d.seeded;
+    if (window._flowSetSeeded) window._flowSetSeeded(!!d.seeded);
+    if (d.seeded) {
+      if (dot) { dot.className = 'dot'; dot.style.background = 'var(--neg)'; dot.style.boxShadow = '0 0 6px var(--neg)'; dot.style.animation = 'dp 2s ease-in-out infinite'; }
+      if (badge) { badge.textContent = 'LIVE'; badge.style.borderColor = 'var(--neg)'; badge.style.color = 'var(--neg)'; }
+      if (seededEl) { seededEl.textContent = '✓ QUANTUM SEEDED'; seededEl.style.color = 'var(--ok)'; }
+      if (reseedBtn) reseedBtn.disabled = false;
+    } else {
+      if (dot) { dot.className = 'dot'; dot.style.background = 'var(--warn)'; dot.style.boxShadow = ''; dot.style.animation = ''; }
+      if (badge) { badge.textContent = 'SEEDING'; badge.style.color = 'var(--warn)'; badge.style.borderColor = 'var(--warn)'; }
+    }
+
+    const bEl = document.getElementById('nd-bps');
+    const gEl = document.getElementById('nd-gen');
+    const rEl = document.getElementById('nd-rc');
+    const fpEl = document.getElementById('nd-fp');
+    const expFp = document.getElementById('neg-exp-fp-val');
+    const stTxt = document.getElementById('neg-status-txt');
+
+    if (bEl) bEl.textContent = fmtBps(d.rate_bps || 0);
+    if (gEl) gEl.textContent = fmtBytes(d.bytes_generated || 0);
+    if (rEl) rEl.textContent = d.reseed_count || 0;
+    if (fpEl) fpEl.textContent = d.seed_fingerprint || '--------';
+    if (expFp) expFp.textContent = d.seed_fingerprint || '--------';
+    if (stTxt) stTxt.textContent = d.nist_ref || 'NIST SP 800-90A';
+
+  } catch(e) {
+    const dot = document.getElementById('neg-dot');
+    const badge = document.getElementById('neg-badge');
+    if (dot) { dot.className = 'dot'; dot.style.background = ''; dot.style.boxShadow = ''; dot.style.animation = ''; }
+    if (badge) { badge.textContent = 'OFFLINE'; badge.style.color = 'var(--danger)'; badge.style.borderColor = 'var(--danger)'; }
+  }
+}
+setInterval(pollNeg, 2500);
+setTimeout(pollNeg, 800);
+
+// ══════════════════════════════════════════════════════════
+//  SOVEREIGN VAULT — AES-GCM-256 QRNG-encrypted password library
+//  Key: 32 bytes from NEAR vault → AES-GCM-256 (non-extractable)
+//  IV:  12 bytes from DRBG per entry
+//  Storage: encrypted blobs in localStorage; key in sessionStorage (hex)
+//  Gate: NEAR vault_pct ≥ 0.01% AND DRBG seeded before arming or saving
+// ══════════════════════════════════════════════════════════
+(function() {
+  const VAULT_KEY   = 'sqrng_vault_key';       // sessionStorage: 32-byte hex key
+  const VAULT_STORE = 'sqrng_vault_entries';   // localStorage: JSON array of entries
+  const ENTROPY_MIN = 0.01;                    // % of NEAR vault minimum to arm
+
+  let _cryptoKey    = null;   // CryptoKey object (in-memory, non-extractable)
+  let _sessionId    = sessionStorage.getItem('sqrng_sid') || null;
+  let _pendingSave  = null;   // {text, type} waiting in save modal
+  let _vaultPct     = 0;      // updated by pollNear
+  let _drbgReady    = false;  // updated by pollNeg
+
+  // ── Generate new session ID ──
+  if (!_sessionId) {
+    _sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    sessionStorage.setItem('sqrng_sid', _sessionId);
+  }
+
+  // ── Restore key from sessionStorage if it survived a page refresh ──
+  (async function tryRestoreKey() {
+    const hex = sessionStorage.getItem(VAULT_KEY);
+    if (!hex || hex.length !== 64) return;
+    try {
+      const raw = hexToU8(hex);
+      _cryptoKey = await crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+      console.log('[VAULT] Key restored from sessionStorage');
+    } catch(e) {
+      sessionStorage.removeItem(VAULT_KEY);
+    }
+    updateVaultUI();
+  })();
+
+  // ── QRNG helpers ──
+  async function fetchQrngBytes(n, preferDrbg = false) {
+    // Try DRBG first if preferred (faster, always available once seeded)
+    if (preferDrbg && _drbgReady) {
+      try {
+        const r = await fetch(`http://127.0.0.1:8767/api/neg/bytes?n=${n}`, {signal:AbortSignal.timeout(2000)});
+        if (r.ok) { const d = await r.json(); return hexToU8(d.hex); }
+      } catch(e) {}
+    }
+    // Fall back to NEAR vault via entropy_api
+    try {
+      const r = await fetch(`http://127.0.0.1:8888/api/bytes?n=${n}`, {signal:AbortSignal.timeout(3000)});
+      if (r.ok) { const d = await r.json(); return hexToU8(d.hex); }
+    } catch(e) {}
+    // Last resort: WebCrypto (never ideal, but keeps vault functional)
+    const b = new Uint8Array(n); crypto.getRandomValues(b); return b;
+  }
+
+  function hexToU8(hex) {
+    const b = new Uint8Array(hex.length >> 1);
+    for (let i = 0; i < b.length; i++) b[i] = parseInt(hex.slice(i*2, i*2+2), 16);
+    return b;
+  }
+  function u8ToHex(u8) {
+    return Array.from(u8).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // ── Entropy readiness check ──
+  function isEntropyReady() {
+    return _vaultPct >= ENTROPY_MIN && _drbgReady;
+  }
+
+  // ── VAULT ARM ──
+  window.vaultArm = async function() {
+    const btn = document.getElementById('vlt-arm-btn');
+    if (btn) { btn.textContent = '⏳ ARMING…'; btn.disabled = true; }
+
+    if (!isEntropyReady()) {
+      alert('❌ Insufficient entropy.\n\nVault requires NEAR vault > ' + ENTROPY_MIN + '% and DRBG seeded.\n\nLet the entropy engine run for a few more minutes.');
+      if (btn) { btn.textContent = '⚡ ARM VAULT'; btn.disabled = false; }
+      return;
+    }
+
+    try {
+      // Fetch 32 QRNG bytes from NEAR vault for key material
+      const keyBytes = await fetchQrngBytes(32, false);
+      _cryptoKey = await crypto.subtle.importKey(
+        'raw', keyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']
+      );
+      // Store hex in sessionStorage for refresh survival
+      sessionStorage.setItem(VAULT_KEY, u8ToHex(keyBytes));
+      console.log('[VAULT] Armed with fresh quantum key');
+    } catch(e) {
+      alert('⚠️ Vault arm failed: ' + e.message);
+    }
+
+    if (btn) { btn.textContent = '⚡ ARM VAULT'; btn.disabled = false; }
+    updateVaultUI();
+  };
+
+  // ── VAULT SAVE FLOW ──
+  window.openVaultSave = function(outputId, type) {
+    const el = document.getElementById(outputId);
+    const text = el ? el.textContent.trim() : '';
+    if (!text || text.startsWith('—') || text.startsWith('MIN') || text.startsWith('neg_entropy')) {
+      alert('Generate a ' + type.toLowerCase() + ' first.');
+      return;
+    }
+    _pendingSave = {text, type};
+    document.getElementById('vlt-save-preview').textContent = text;
+    document.getElementById('vlt-desc').value = '';
+    updateSaveModalEntropy();
+    document.getElementById('vault-save-modal').classList.add('open');
+    setTimeout(() => document.getElementById('vlt-desc').focus(), 80);
+  };
+
+  window.closeVaultSave = function() {
+    document.getElementById('vault-save-modal').classList.remove('open');
+    _pendingSave = null;
+  };
+
+  async function updateSaveModalEntropy() {
+    const statusEl = document.getElementById('vlt-save-entropy-status');
+    const msgEl    = document.getElementById('vlt-save-entropy-msg');
+    const saveBtn  = document.getElementById('vlt-save-confirm-btn');
+    const descEl   = document.getElementById('vlt-desc');
+
+    const armed   = !!_cryptoKey;
+    const entropyOk = isEntropyReady();
+
+    if (!entropyOk) {
+      statusEl.className = 'vault-entropy-status bad';
+      msgEl.textContent = 'Entropy insufficient — NEAR vault < ' + ENTROPY_MIN + '% or DRBG offline.';
+      if (saveBtn) saveBtn.disabled = true;
+    } else if (!armed) {
+      statusEl.className = 'vault-entropy-status warn';
+      msgEl.textContent = 'Vault not armed. Close this and click ⚡ ARM VAULT first.';
+      if (saveBtn) saveBtn.disabled = true;
+    } else {
+      statusEl.className = 'vault-entropy-status ok';
+      msgEl.textContent = 'Vault armed ✓ · AES-GCM-256 · IV from DRBG · NEAR entropy ' + _vaultPct.toFixed(3) + '%';
+      if (saveBtn && descEl) {
+        saveBtn.disabled = descEl.value.trim().length === 0;
+      }
+    }
+  }
+
+  // Enable/disable save button as user types
+  document.addEventListener('DOMContentLoaded', () => {
+    const descEl = document.getElementById('vlt-desc');
+    if (descEl) descEl.addEventListener('input', () => {
+      const btn = document.getElementById('vlt-save-confirm-btn');
+      if (btn && _cryptoKey && isEntropyReady()) {
+        btn.disabled = descEl.value.trim().length === 0;
+      }
+    });
+  });
+
+  window.vaultConfirmSave = async function() {
+    if (!_pendingSave || !_cryptoKey) return;
+    const desc = document.getElementById('vlt-desc').value.trim();
+    if (!desc) { document.getElementById('vlt-desc').focus(); return; }
+
+    const btn = document.getElementById('vlt-save-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ ENCRYPTING…';
+
+    try {
+      // 12-byte IV from DRBG (preferred) or NEAR vault
+      const iv = await fetchQrngBytes(12, true);
+      const enc = new TextEncoder();
+      const cipher = await crypto.subtle.encrypt(
+        {name:'AES-GCM', iv}, _cryptoKey, enc.encode(_pendingSave.text)
+      );
+      const entry = {
+        id:       Date.now().toString(36) + Math.random().toString(36).slice(2),
+        sid:      _sessionId,
+        desc,
+        type:     _pendingSave.type,
+        ts:       new Date().toISOString(),
+        iv:       u8ToHex(iv),
+        cipher:   u8ToHex(new Uint8Array(cipher)),
+      };
+
+      const entries = loadEntries();
+      entries.unshift(entry);
+      saveEntries(entries);
+
+      btn.textContent = '✓ SAVED';
+      btn.style.background = 'rgba(34,197,94,.28)';
+      setTimeout(() => {
+        closeVaultSave();
+        btn.textContent = '🔐 ENCRYPT & SAVE WITH QUANTUM KEY';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 1200);
+
+      updateVaultUI();
+    } catch(e) {
+      btn.textContent = '⚠️ FAILED — ' + e.message;
+      btn.disabled = false;
+    }
+  };
+
+  // ── VAULT LIBRARY ──
+  window.openVaultLibrary = function() {
+    renderLibrary();
+    document.getElementById('vault-lib-modal').classList.add('open');
+  };
+  window.closeVaultLibrary = function() {
+    document.getElementById('vault-lib-modal').classList.remove('open');
+  };
+
+  function renderLibrary(filter) {
+    const armed   = !!_cryptoKey;
+    const entries = loadEntries();
+    const armBanner = document.getElementById('vlt-arm-banner');
+    const body    = document.getElementById('vlt-lib-body');
+    const empty   = document.getElementById('vlt-empty');
+
+    // Show arm banner if not armed
+    if (armBanner) armBanner.style.display = armed ? 'none' : 'block';
+
+    // Stats
+    const thisSession = entries.filter(e => e.sid === _sessionId).length;
+    const sTotal = document.getElementById('vls-total');
+    const sSession = document.getElementById('vls-session');
+    if (sTotal) sTotal.textContent = entries.length;
+    if (sSession) sSession.textContent = thisSession;
+
+    // Filter
+    const q = (filter || document.getElementById('vlt-search')?.value || '').toLowerCase();
+    const visible = q ? entries.filter(e => e.desc.toLowerCase().includes(q) || e.type.toLowerCase().includes(q)) : entries;
+
+    // Clear non-fixed children
+    const children = [...body.children];
+    children.forEach(c => { if (c !== empty) c.remove(); });
+
+    if (!visible.length) {
+      empty.style.display = 'block';
+      empty.textContent = q ? 'No entries match "' + q + '".' : 'No credentials saved yet.\n\nGenerate a password or passphrase and click 🔒 SAVE.';
+      return;
+    }
+    empty.style.display = 'none';
+
+    visible.forEach(entry => {
+      const isMine = entry.sid === _sessionId;
+      const d = new Date(entry.ts);
+      const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const card = document.createElement('div');
+      card.className = 'vault-entry';
+      card.id = 'ventry-' + entry.id;
+      card.innerHTML = `
+        <div class="vault-entry-hdr" onclick="vaultToggleEntry('${entry.id}')">
+          <span class="vault-entry-icon">${entry.type === 'PASSPHRASE' ? '◉' : '⚡'}</span>
+          <span class="vault-entry-desc" title="${entry.desc}">${entry.desc}</span>
+          <span class="vault-session-tag ${isMine ? 'live' : 'dead'}">${isMine ? 'THIS SESSION' : 'LOCKED'}</span>
+          <span class="vault-entry-meta">${entry.type} · ${dateStr}</span>
+        </div>
+        <div class="vault-entry-body" id="vbody-${entry.id}">
+          <div class="vault-pw-field" id="vpw-${entry.id}" style="display:none;"></div>
+          <div class="vault-entry-actions">
+            ${isMine ? `<button class="vault-act-btn reveal" onclick="vaultReveal('${entry.id}')">🔓 REVEAL</button>` : `<span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;">🔒 Key expired — regenerate password</span>`}
+            ${isMine ? `<button class="vault-act-btn copy" onclick="vaultCopyEntry('${entry.id}')">📋 COPY</button>` : ''}
+            <button class="vault-act-btn del" onclick="vaultDelete('${entry.id}')">🗑 DELETE</button>
+          </div>
+        </div>`;
+      body.appendChild(card);
+    });
+  }
+
+  window.vaultSearch = function() { renderLibrary(); };
+
+  window.vaultToggleEntry = function(id) {
+    const body = document.getElementById('vbody-' + id);
+    if (body) body.classList.toggle('open');
+  };
+
+  window.vaultReveal = async function(id) {
+    if (!_cryptoKey) { alert('Vault not armed.'); return; }
+    const entries = loadEntries();
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    const pwEl = document.getElementById('vpw-' + id);
+    if (!pwEl) return;
+    if (pwEl.style.display === 'block') { pwEl.style.display = 'none'; return; }
+    try {
+      const iv     = hexToU8(entry.iv);
+      const cipher = hexToU8(entry.cipher);
+      const plain  = await crypto.subtle.decrypt({name:'AES-GCM', iv}, _cryptoKey, cipher);
+      pwEl.textContent = new TextDecoder().decode(plain);
+      pwEl.style.display = 'block';
+    } catch(e) {
+      pwEl.textContent = '⚠️ Decryption failed — key mismatch';
+      pwEl.style.display = 'block';
+    }
+  };
+
+  window.vaultCopyEntry = async function(id) {
+    if (!_cryptoKey) return;
+    const entries = loadEntries();
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    try {
+      const iv     = hexToU8(entry.iv);
+      const cipher = hexToU8(entry.cipher);
+      const plain  = await crypto.subtle.decrypt({name:'AES-GCM', iv}, _cryptoKey, cipher);
+      const text   = new TextDecoder().decode(plain);
+      await navigator.clipboard.writeText(text);
+      // Flash feedback
+      const card = document.getElementById('ventry-' + id);
+      if (card) { card.style.borderColor = 'var(--ok)'; setTimeout(() => card.style.borderColor = '', 1400); }
+    } catch(e) {}
+  };
+
+  window.vaultDelete = function(id) {
+    const entries = loadEntries().filter(e => e.id !== id);
+    saveEntries(entries);
+    const card = document.getElementById('ventry-' + id);
+    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity .3s'; setTimeout(() => { card.remove(); renderLibrary(); }, 320); }
+    updateVaultUI();
+  };
+
+  window.vaultClearAll = function() {
+    if (!confirm('Delete ALL vault entries? This cannot be undone.')) return;
+    saveEntries([]);
+    renderLibrary();
+    updateVaultUI();
+  };
+
+  // ── localStorage helpers ──
+  function loadEntries() {
+    try { return JSON.parse(localStorage.getItem(VAULT_STORE) || '[]'); } catch(e) { return []; }
+  }
+  function saveEntries(arr) {
+    localStorage.setItem(VAULT_STORE, JSON.stringify(arr));
+  }
+
+  // ── Update vault header UI ──
+  function updateVaultUI() {
+    const armed   = !!_cryptoKey;
+    const entropyOk = isEntropyReady();
+    const entries = loadEntries();
+    const count   = entries.length;
+
+    const dot     = document.getElementById('vlt-dot');
+    const lbl     = document.getElementById('vlt-lbl');
+    const armBtn  = document.getElementById('vlt-arm-btn');
+    const libBtn  = document.getElementById('vlt-lib-btn');
+    const cntEl   = document.getElementById('vlt-count');
+    const pwSave  = document.getElementById('pw-vault-btn');
+    const ppSave  = document.getElementById('pp-vault-btn');
+
+    const state = armed ? 'armed' : (entropyOk ? 'locked' : 'sealed');
+
+    const labels = {armed:'VAULT ARMED', locked:'VAULT LOCKED', sealed:'VAULT SEALED'};
+    if (dot) { dot.className = 'vault-dot ' + state; }
+    if (lbl) { lbl.className = 'vault-lbl ' + state; lbl.textContent = labels[state]; }
+    if (cntEl) cntEl.textContent = count + (count === 1 ? ' entry' : ' entries');
+
+    if (armBtn) {
+      armBtn.className = 'vault-hdr-btn arm ' + (entropyOk ? 'arm' : 'sealed');
+      armBtn.disabled  = !entropyOk;
+      armBtn.textContent = armed ? '🔄 REARM' : '⚡ ARM VAULT';
+    }
+    if (libBtn) {
+      libBtn.className = 'vault-hdr-btn open ' + (count > 0 ? 'open' : '');
+      libBtn.disabled  = false;
+    }
+    // Enable SAVE buttons only when armed
+    [pwSave, ppSave].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = !armed;
+      btn.title    = armed ? 'Save to quantum vault' : 'Arm vault to save';
+      btn.textContent = armed ? '🔓 SAVE' : '🔒 SAVE';
+    });
+  }
+
+  // ── Entropy bar update (called from pollNear) ──
+  window._vaultUpdateEntropy = function(vaultPct, drbgSeeded) {
+    _vaultPct  = vaultPct;
+    _drbgReady = drbgSeeded;
+    const fill = document.getElementById('vlt-ebar');
+    const pct  = document.getElementById('vlt-epct');
+    // Scale: 0→0%, ENTROPY_MIN→50%, 1%→100% (log-ish feel)
+    const frac = Math.min(1, vaultPct / (ENTROPY_MIN * 2));
+    if (fill) fill.style.width = (frac * 100) + '%';
+    if (pct)  pct.textContent  = vaultPct.toFixed(3) + '%';
+    updateVaultUI();
+  };
+
+  // Close modals on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeVaultSave(); closeVaultLibrary(); }
+  });
+
+  // Initial render
+  updateVaultUI();
+})();
+
+// Gestalt F-pattern left-border colour indicators per section
+// Dual Coding Theory: visual symbol + label + body text = multiple memory paths
+document.addEventListener('DOMContentLoaded', () => {
+  const borderCls = ['il-accent','il-danger','il-escher','il-warn','il-ok','il-warn','il-escher'];
+  document.querySelectorAll('#tab-intel .intel-section').forEach((s,i) => {
+    if (borderCls[i]) s.classList.add(borderCls[i]);
+  });
+
+  const srcSyms = {
+    'WEBCAM · CAM-A':          {sym:'◉', col:'var(--ok)'},
+    'RTL-SDR RADIO':           {sym:'≋', col:'var(--sdr0)'},
+    'CPU JITTER':              {sym:'⚡', col:'var(--cpu)'},
+    'MICROPHONE ADC':          {sym:'◎', col:'var(--audio)'},
+    'LASER CAM · TRUE QUANTUM':{sym:'✦', col:'var(--true)'},
+    'ESCHER-6 CASCADE':        {sym:'◈', col:'var(--escher)'},
+  };
+  document.querySelectorAll('.src-explain-hdr').forEach(h => {
+    const key = h.textContent.trim();
+    const info = srcSyms[key];
+    if (!info) return;
+    const sym = document.createElement('span');
+    sym.className = 'src-explain-sym';
+    sym.style.color = info.col;
+    sym.textContent = info.sym;
+    h.insertBefore(sym, h.firstChild);
+  });
+});
+</script>
+</body>
+</html>

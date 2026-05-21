@@ -1,0 +1,39 @@
+# ── Secrets & Credentials ──
+payment_config.json
+market_config.json
+api_keys.json
+*.pem
+.env
+.env.local
+*.key
+
+# ── Runtime vault & entropy data ──
+*.bin
+*_stats.json
+*_offset.txt
+contributions.jsonl
+*.log
+
+# ── RTL-SDR binaries (download separately from rtl-sdr.com) ──
+rtlsdr_tools/
+*.exe
+*.dll
+
+# ── Python cache ──
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ── OS / IDE ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Local config overrides ──
+local_settings.py
+config_local.py

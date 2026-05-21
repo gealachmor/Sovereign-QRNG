@@ -1,0 +1,9 @@
+# SOVEREIGN QRNG — GitHub Sponsor Button Configuration
+# These links appear as a "Sponsor" button on the GitHub repo page.
+# Replace the placeholder URLs below with your real payment links
+# after following the setup steps in README_GITHUB.md
+
+custom:
+  - https://buy.stripe.com/4gMfZheVi6x90CSamM3F600
+  - https://paypal.me/coinrotationproblem
+  - https://revolut.me/robertpxul

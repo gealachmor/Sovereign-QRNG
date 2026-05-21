@@ -1,0 +1,20 @@
+# SOVEREIGN QRNG — Python dependencies
+# Install with:  pip install -r requirements.txt
+
+# Core — required
+numpy>=1.21.0
+opencv-python>=4.5.0
+pillow>=9.0.0
+# requests>=2.27.0   # not currently used by core services
+
+# Audio entropy source (at least one required — sounddevice preferred)
+sounddevice>=0.4.5
+pyaudio>=0.2.11
+
+# RTL-SDR (optional — needed for RF entropy source)
+# pyrtlsdr>=0.2.9   # install only if using RTL-SDR dongle
+# The engine uses rtl_sdr.exe subprocess, not the Python binding,
+# so pyrtlsdr is NOT required. Only install if you want the Python API.
+
+# Payment system (optional — only needed if running payment_api.py)
+# stripe>=4.0.0
