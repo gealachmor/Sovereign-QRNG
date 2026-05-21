@@ -37,3 +37,8 @@ Thumbs.db
 # ── Local config overrides ──
 local_settings.py
 config_local.py
+
+# ── Optional commercial modules (not part of open-source release) ──
+payment_api.py
+entropy_market_api.py
+key_manager.py

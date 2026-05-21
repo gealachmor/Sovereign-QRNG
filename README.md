@@ -75,8 +75,6 @@ python process_manager.py --core-only
 | Webcam Server | 8090 | webcam_server.py | MJPEG streams + /cameras API |
 | NEAR Entropy | 8766 | near_entropy.py | 4-source quantum entropy engine |
 | Dashboard API | 8888 | entropy_api.py | Serves dashboard + /api/bytes |
-| Entropy Market | 8889 | entropy_market_api.py | Optional commercial API |
-| Payment API | 8890 | payment_api.py | Optional Stripe/PayPal/Monero |
 | Negentropy DRBG | 8767 | neg_entropy.py | HMAC-SHA-256 DRBG lifeboat |
 
 ---
@@ -216,18 +214,6 @@ The DRBG is implemented per **NIST SP 800-90A Rev.1 §10.1.2** (HMAC-DRBG with S
 
 ---
 
-## CONTRIBUTION ENDPOINT
-
-External entropy contributions accepted at `POST http://127.0.0.1:8888/api/contribute`:
-
-```json
-{ "entropy_hex": "a3f2..." }
-```
-
-Contributed bytes pass through Escher-6 whitening before vaulting. Rate-limited to 1 submission per IP per 60 seconds. Max 1% of vault capacity from external sources (sovereign sources always priority).
-
----
-
 ## FILE STRUCTURE
 
 ```
@@ -239,8 +225,6 @@ entropy_rig/
 ├── true_entropy.py          # TRUE quantum engine (port 8765) [WIP]
 ├── webcam_server.py         # Multi-cam MJPEG server (port 8090)
 ├── entropy_api.py           # Dashboard API + whitening (port 8888)
-├── entropy_market_api.py    # Commercial API (port 8889)
-├── payment_api.py           # Payment processing (port 8890)
 ├── process_manager.py       # Single-window service supervisor
 ├── near_dashboard.html      # Full browser dashboard
 ├── nist_sts_test.py         # NIST statistical test suite

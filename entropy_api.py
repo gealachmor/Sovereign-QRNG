@@ -1,38 +1,28 @@
-﻿"""
-SOVEREIGN QRNG â€” DASHBOARD API SERVER
+﻿“””
+SOVEREIGN QRNG — DASHBOARD API SERVER
 =======================================
 Serves the dashboard HTML + aggregates stats from both entropy engines.
 Port: 8888
 
-GET /                    â†’ dashboard.html
-GET /near                â†’ near_dashboard.html
-GET /true                â†’ true_dashboard.html
-GET /api/true            â†’ near_entropy stats (port 8765)
-GET /api/near            â†’ near_entropy stats (port 8766)
-GET /api/both            â†’ combined JSON {true: {...}, near: {...}}
-POST /api/contribute     â†’ accept contributed entropy bytes (opt-in pool donation)
-GET /api/contribute/stats â†’ contribution stats
-"""
+GET /                    → dashboard.html
+GET /near                → near_dashboard.html
+GET /true                → true_dashboard.html
+GET /api/true            → near_entropy stats (port 8765)
+GET /api/near            → near_entropy stats (port 8766)
+GET /api/both            → combined JSON {true: {...}, near: {...}}
+GET /api/bytes?n=N       → N raw entropy bytes as hex (max 4096)
+POST /api/purge_near     → zero and reset the NEAR vault
+“””
 
-import json, os, urllib.request, hashlib, datetime, collections, time
+import json, os, urllib.request, hashlib, time
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-DASHBOARD      = Path(__file__).parent / "dashboard.html"
-NEAR_DASHBOARD = Path(__file__).parent / "near_dashboard.html"
-TRUE_DASHBOARD = Path(__file__).parent / "true_dashboard.html"
-from config import TRUE_STATS, NEAR_STATS, CONTRIB_LOG, NEAR_VAULT, NEAR_OFFSET
+DASHBOARD      = Path(__file__).parent / “dashboard.html”
+NEAR_DASHBOARD = Path(__file__).parent / “near_dashboard.html”
+TRUE_DASHBOARD = Path(__file__).parent / “true_dashboard.html”
+from config import TRUE_STATS, NEAR_STATS, NEAR_VAULT, NEAR_OFFSET
 PORT           = 8888
-
-# Security constants
-MAX_POST_BYTES   = 65_536                    # 64 KB hard cap on POST body
-NEAR_VAULT_QUOTA = 50  * 1024 * 1024        # 1% of 5 GB vault
-TRUE_VAULT_QUOTA = 100 * 1024 * 1024        # 1% of 10 GB vault
-RATE_LIMIT_SEC   = 60                        # cooldown per IP
-
-_contrib_count = 0
-_contrib_bytes = 0
-_rate_limit: dict = collections.defaultdict(float)  # ip -> last_accept_time
 
 
 def escher_cascade(data: bytes) -> bytes:
@@ -92,17 +82,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
-    def _client_ip(self) -> str:
-        return self.client_address[0]
-
-    def _rate_ok(self) -> bool:
-        ip = self._client_ip()
-        now = time.monotonic()
-        if now - _rate_limit[ip] < RATE_LIMIT_SEC:
-            return False
-        _rate_limit[ip] = now
-        return True
-
     def _err(self, code: int, msg: str):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
@@ -111,52 +90,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"ok": False, "error": msg}).encode())
 
     def do_POST(self):
-        global _contrib_count, _contrib_bytes
         p = self.path.split("?")[0]
-        if p == "/api/contribute":
-            # Rate limit
-            if not self._rate_ok():
-                self._err(429, f"rate limited — wait {RATE_LIMIT_SEC}s between contributions")
-                return
-            # 64 KB body cap
-            length = int(self.headers.get("Content-Length", 0))
-            if length > MAX_POST_BYTES:
-                self._err(413, f"body too large — max {MAX_POST_BYTES} bytes")
-                return
-            try:
-                body = self.rfile.read(length)
-                data = json.loads(body)
-                hex_str = data.get("entropy_hex", "")
-                if not hex_str or len(hex_str) % 2 != 0:
-                    raise ValueError("invalid entropy_hex")
-                raw = bytes.fromhex(hex_str)
-                # Whiten through Escher cascade before vaulting
-                whitened = escher_cascade(raw)
-                # Vault quota: 1% cap
-                offset = int(NEAR_OFFSET.read_text().strip()) if NEAR_OFFSET.exists() else 0
-                if offset >= NEAR_VAULT_QUOTA:
-                    self._err(507, "contribution quota reached — sovereign sources have priority")
-                    return
-                if NEAR_VAULT.exists():
-                    with open(NEAR_VAULT, "r+b") as vf:
-                        vf.seek(offset)
-                        space = NEAR_VAULT_QUOTA - offset
-                        vf.write(whitened[:space])
-                    NEAR_OFFSET.write_text(str(offset + len(whitened[:space])))
-                # Log
-                _contrib_count += 1
-                _contrib_bytes += len(raw)
-                record = {
-                    "ts": datetime.datetime.now(datetime.UTC).isoformat(),
-                    "bytes": len(raw),
-                    "sha256": hashlib.sha256(raw).hexdigest()[:16],
-                }
-                with open(CONTRIB_LOG, "a") as f:
-                    f.write(json.dumps(record) + "\n")
-                self._json({"ok": True, "bytes_accepted": len(raw)})
-            except Exception as e:
-                self._err(400, str(e))
-        elif p == "/api/purge_near":
+        if p == "/api/purge_near":
             # Triple-lock purge — wipe near vault and reset offset
             try:
                 purged = 0
@@ -206,12 +141,6 @@ class Handler(BaseHTTPRequestHandler):
             self._json(read_stats(NEAR_STATS))
         elif p == "/api/both":
             self._json({"true": read_stats(TRUE_STATS), "near": read_stats(NEAR_STATS)})
-        elif p == "/api/contribute/stats":
-            self._json({
-                "contributions": _contrib_count,
-                "bytes_total": _contrib_bytes,
-                "kb_total": round(_contrib_bytes / 1024, 2),
-            })
         elif p.startswith("/api/bytes"):
             qs = self.path.split("?", 1)
             n_str = "32"

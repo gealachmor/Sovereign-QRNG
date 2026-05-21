@@ -31,7 +31,6 @@ NEAR_STATS    = QRNG_POOL_DIR / 'near_stats.json'
 TRUE_STATS    = QRNG_POOL_DIR / 'true_stats.json'
 NEG_STATS     = QRNG_POOL_DIR / 'neg_stats.json'
 NEG_SEED_F    = QRNG_POOL_DIR / 'neg_seed.bin'
-CONTRIB_LOG   = QRNG_POOL_DIR / 'contributions.jsonl'
 NEAR_LOG      = QRNG_POOL_DIR / 'near_entropy.log'
 NEAR_POOL_DIR = QRNG_POOL_DIR / 'near_pool'
 

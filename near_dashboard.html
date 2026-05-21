@@ -637,7 +637,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
 .neg-bytevis canvas{display:block;width:100%;height:100%;}
 
 /* Seeding chain flow diagram */
-.neg-flow-wrap{flex-shrink:0;height:76px;background:#010208;position:relative;overflow:hidden;
+.neg-flow-wrap{flex-shrink:0;height:102px;background:#010208;position:relative;overflow:hidden;
   border:1px solid var(--bord);border-radius:4px;}
 .neg-flow-wrap canvas{display:block;width:100%;}
 
@@ -746,7 +746,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <div class="cam-card cam-primary" id="cam-card-0" onclick="setPrimaryCam(0)">
           <div class="cam-card-bar">
             <div class="sdot" id="cam-sdot-0" data-src="cam"></div>
-            <span class="cam-card-name" style="color:var(--accent)">CAM-A · HP TrueVision</span>
+            <span class="cam-card-name" style="color:var(--accent)">CAM-A · Built-in Camera</span>
             <span class="cam-card-bdg" id="cam-card-bdg-0">WAITING</span>
           </div>
           <div class="cam-feed">
@@ -1455,7 +1455,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <span style="color:var(--neg);letter-spacing:2px;font-size:var(--sz-xs);">◈ SEEDING CHAIN</span>
           <span style="margin-left:auto;font-size:6px;color:rgba(129,140,248,.45);letter-spacing:1px;">quantum seeds math → math outputs ∞</span>
         </div>
-        <canvas id="neg-flow-canvas" style="height:54px;display:block;width:100%;"></canvas>
+        <canvas id="neg-flow-canvas" style="height:74px;display:block;width:100%;"></canvas>
       </div>
 
       <div class="panel neg-recaman" style="border-color:rgba(129,140,248,.2);">
@@ -2071,7 +2071,7 @@ const WIZ = {
   svc_api: { solved:'Run: python entropy_api.py — should start on port 8888. Check no other process uses 8888: netstat -ano | findstr 8888' },
   dash1: { q:'Can you reach http://127.0.0.1:8888 at all?', opts:[{t:'No — connection refused',n:'dash2'},{t:'Yes but page is blank/broken',n:'dash3'}]},
   dash2: { solved:'entropy_api.py is not running. Run: python entropy_api.py (or use LAUNCH_NEAR.ps1). Then open http://127.0.0.1:8888/near' },
-  dash3: { solved:'entropy_api.py running but serving wrong file. Check: C:\\WINDOWS\\system32\\hpclaude\\entropy_rig\\near_dashboard.html exists. Restart entropy_api.py.' },
+  dash3: { solved:'entropy_api.py running but serving wrong file. Check: near_dashboard.html exists in the same folder as entropy_api.py. Restart entropy_api.py.' },
 };
 let wizHistory=[];
 function buildWizard() {
@@ -2493,7 +2493,7 @@ function genRange() {
 
 // ── SYSTEM ADVISOR ──
 const ADV_SYS = `You are SOVEREIGN ADVISOR, an AI assistant embedded in the SOVEREIGN QRNG dashboard.
-Hardware: HP laptop i3-1005G1, 8GB RAM, Windows 10. RTL-SDR: Nooelec SMArt XTR v5 E4000 tuner, libusbK driver via Zadig. RTL-SDR binary: C:\\QRNG_Pool\\rtlsdr_tools\\x64\\rtl_sdr.exe at 96.9 MHz 29dB 256KSPS. Cameras: HP TrueVision built-in CAM-A (NEAR), USB webcam CAM-B with laser (TRUE). Services: webcam_server:8090, near_entropy:8766, entropy_api:8888.
+Hardware: Windows laptop with built-in webcam. RTL-SDR: USB dongle with libusbK driver via Zadig. RTL-SDR binary: C:\\QRNG_Pool\\rtlsdr_tools\\x64\\rtl_sdr.exe at 96.9 MHz 29dB 256KSPS. Cameras: built-in webcam CAM-A (NEAR), USB webcam CAM-B with laser (TRUE). Services: webcam_server:8090, near_entropy:8766, entropy_api:8888.
 Rules: respond with numbered steps only, 2-4 steps max, be direct and hardware-specific, no preamble.`;
 
 const ADV_STATIC = {
@@ -2563,10 +2563,10 @@ function runAdvisor(d) {
   const sdr0=src.sdr0?.status==='LIVE', cam=src.cam?.status==='LIVE', audio=src.audio?.status==='LIVE';
   const bps=d.bits_per_sec||0, offset=d.vault_offset||0;
 
-  if(!sdr0&&_advPrev.sdr0!==false) _advShowCard('rtlsdr_offline','RTL-SDR OFFLINE','RTL-SDR [0] has gone offline on the HP laptop. Nooelec SMArt XTR v5, libusbK driver. Most likely causes and fix steps?');
+  if(!sdr0&&_advPrev.sdr0!==false) _advShowCard('rtlsdr_offline','RTL-SDR OFFLINE','RTL-SDR [0] has gone offline. libusbK driver via Zadig. Most likely causes and fix steps?');
   else if(sdr0&&_advPrev.sdr0===false) _advRemoveCard('rtlsdr_offline');
 
-  if(!cam&&_advPrev.cam!==false) _advShowCard('cam_offline','CAMERA OFFLINE','Built-in HP TrueVision webcam CAM-A went offline in webcam_server on port 8090. What should user check?');
+  if(!cam&&_advPrev.cam!==false) _advShowCard('cam_offline','CAMERA OFFLINE','Built-in webcam CAM-A went offline in webcam_server on port 8090. What should user check?');
   else if(cam&&_advPrev.cam===false) _advRemoveCard('cam_offline');
 
   if(!audio&&_advPrev.audio!==false) _advShowCard('audio_offline','AUDIO OFFLINE','Microphone audio source went offline in near_entropy.py on Windows 10. Fix steps?');
@@ -2728,13 +2728,20 @@ async function doPurge() {
       ctxF = cvF.getContext('2d');
     }
     if (cvF.offsetParent === null) return;
-    const W = cvF.clientWidth || 400, H = 54;
-    if (cvF.width !== W || cvF.height !== H) { cvF.width = W; cvF.height = H; }
+
+    const dpr = window.devicePixelRatio || 1;
+    const W = cvF.clientWidth  || 400;
+    const H = cvF.clientHeight || 74;
+    const pW = Math.round(W * dpr), pH = Math.round(H * dpr);
+    if (cvF.width !== pW || cvF.height !== pH) {
+      cvF.width = pW; cvF.height = pH;
+      ctxF.scale(dpr, dpr);
+    }
     ctxF.clearRect(0, 0, W, H);
 
-    const bW = Math.min(84, Math.floor(W * 0.21));
-    const gap = Math.max(28, Math.floor((W - bW * 3) / 2));
-    const bH = 28;
+    const bW = Math.min(118, Math.floor(W * 0.26));
+    const gap = Math.max(30, Math.floor((W - bW * 3) / 2));
+    const bH = 40;
     const sx = Math.floor((W - (bW * 3 + gap * 2)) / 2);
     const sy = Math.floor((H - bH) / 2);
     const xPos = [sx, sx + bW + gap, sx + (bW + gap) * 2];
@@ -2747,32 +2754,32 @@ async function doPurge() {
       const my = sy + bH / 2;
       const active = (i === 0) || _seeded;
       const [r, g, b] = BOXES[i].rgb;
-      const al = active ? 0.45 : 0.1;
+      const al = active ? 0.5 : 0.12;
 
       ctxF.beginPath();
       ctxF.strokeStyle = `rgba(${r},${g},${b},${al})`;
       ctxF.lineWidth = 1.5;
-      ctxF.moveTo(x1 + 2, my); ctxF.lineTo(x2 - 6, my);
+      ctxF.moveTo(x1 + 2, my); ctxF.lineTo(x2 - 9, my);
       ctxF.stroke();
 
       ctxF.beginPath();
       ctxF.fillStyle = `rgba(${r},${g},${b},${al + 0.1})`;
-      ctxF.moveTo(x2 - 6, my - 4); ctxF.lineTo(x2, my); ctxF.lineTo(x2 - 6, my + 4);
+      ctxF.moveTo(x2 - 9, my - 5); ctxF.lineTo(x2, my); ctxF.lineTo(x2 - 9, my + 5);
       ctxF.closePath(); ctxF.fill();
 
-      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.5 : 0.18})`;
-      ctxF.font = "7px 'Courier New'";
+      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.7 : 0.22})`;
+      ctxF.font = "10px 'Courier New'";
       ctxF.textAlign = 'center';
-      ctxF.fillText(ARROWS[i], (x1 + x2) / 2, my - 9);
+      ctxF.fillText(ARROWS[i], (x1 + x2) / 2, my - 13);
 
       if (active) {
         for (let d = 0; d < 4; d++) {
           const t = ((_animT + d * 0.25 + i * 0.5) % 1);
-          const px = x1 + 2 + (x2 - 8 - x1 - 2) * t;
+          const px = x1 + 2 + (x2 - 11 - x1 - 2) * t;
           const alpha = Math.sin(t * Math.PI) * 0.95;
           ctxF.beginPath();
           ctxF.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
-          ctxF.arc(px, my, 2.5, 0, Math.PI * 2);
+          ctxF.arc(px, my, 3, 0, Math.PI * 2);
           ctxF.fill();
         }
       }
@@ -2783,27 +2790,27 @@ async function doPurge() {
       const x = xPos[i];
       const [r, g, b] = box.rgb;
       const active = (i === 0) || _seeded;
-      const al = active ? 0.8 : 0.25;
+      const al = active ? 0.92 : 0.3;
 
-      ctxF.fillStyle = `rgba(${r},${g},${b},0.06)`;
-      ctxF.strokeStyle = `rgba(${r},${g},${b},${active ? 0.65 : 0.18})`;
+      ctxF.fillStyle = `rgba(${r},${g},${b},0.07)`;
+      ctxF.strokeStyle = `rgba(${r},${g},${b},${active ? 0.7 : 0.2})`;
       ctxF.lineWidth = active ? 1.5 : 1;
       ctxF.beginPath(); ctxF.rect(x, sy, bW, bH); ctxF.fill(); ctxF.stroke();
 
       if (active) {
         ctxF.shadowColor = `rgba(${r},${g},${b},0.5)`;
-        ctxF.shadowBlur = 7;
+        ctxF.shadowBlur = 8;
         ctxF.beginPath(); ctxF.rect(x, sy, bW, bH); ctxF.stroke();
         ctxF.shadowBlur = 0;
       }
 
       ctxF.fillStyle = `rgba(${r},${g},${b},${al})`;
-      ctxF.font = "bold 7.5px 'Courier New'";
+      ctxF.font = "bold 12px 'Courier New'";
       ctxF.textAlign = 'center';
       ctxF.fillText(box.label, x + bW / 2, sy + bH / 2 - 2);
-      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.45 : 0.18})`;
-      ctxF.font = "6px 'Courier New'";
-      ctxF.fillText(box.sub, x + bW / 2, sy + bH / 2 + 9);
+      ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.58 : 0.22})`;
+      ctxF.font = "10px 'Courier New'";
+      ctxF.fillText(box.sub, x + bW / 2, sy + bH / 2 + 13);
     });
   }
 

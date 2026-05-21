@@ -5,8 +5,8 @@ Runs all NEAR QUANTUM services in ONE terminal window.
 Color-coded output per service. Ctrl-C kills all cleanly.
 
 Usage: python process_manager.py
-       python process_manager.py --no-payment
        python process_manager.py --no-browser
+       python process_manager.py --core-only
 """
 import subprocess, sys, threading, os, time, webbrowser
 from pathlib import Path
@@ -34,8 +34,6 @@ COLORS = {
     "webcam":  "\033[36m",   # cyan
     "near":    "\033[94m",   # bright blue
     "api":     "\033[35m",   # magenta
-    "market":  "\033[33m",   # yellow
-    "payment": "\033[32m",   # green
     "rtl":     "\033[96m",   # bright cyan
     "neg":     "\033[95m",   # bright magenta
 }
@@ -64,18 +62,6 @@ SERVICES = [
         "script": RIG / "entropy_api.py",
         "port": 8888,
         "label": "Dashboard API",
-    },
-    {
-        "tag":  "market",
-        "script": RIG / "entropy_market_api.py",
-        "port": 8889,
-        "label": "Entropy Market API",
-    },
-    {
-        "tag":  "payment",
-        "script": RIG / "payment_api.py",
-        "port": 8890,
-        "label": "Payment API",
     },
     {
         "tag":  "neg",
@@ -155,22 +141,11 @@ def banner():
     print()
 
 def main():
-    no_payment = "--no-payment" in sys.argv
     no_browser = "--no-browser" in sys.argv
-    core_only  = "--core-only"  in sys.argv   # only webcam + near_entropy + entropy_api
 
     banner()
 
     for svc in SERVICES:
-        if svc["tag"] == "payment" and (no_payment or core_only):
-            cprint("mgr", f"Skipping {svc['label']}")
-            procs.append(None)
-            continue
-        if svc["tag"] == "market" and core_only:
-            cprint("mgr", f"Skipping {svc['label']} (--core-only)")
-            procs.append(None)
-            continue
-
         proc = launch_service(svc)
         procs.append(proc)
 
@@ -185,7 +160,6 @@ def main():
     print("\033[96m  SOVEREIGN QRNG — NEAR QUANTUM ONLINE\033[0m")
     print("\033[96m  ═══════════════════════════════════════════════════════════\033[0m")
     print("\033[96m  Dashboard:   http://127.0.0.1:8888/near\033[0m")
-    print("\033[96m  API Status:  http://127.0.0.1:8889/v1/status\033[0m")
     print("\033[95m  Negentropy:  http://127.0.0.1:8767/api/neg\033[0m")
     from config import NEAR_LOG
     print(f"\033[36m  Log files:   {NEAR_LOG}\033[0m")
