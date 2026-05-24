@@ -1027,10 +1027,10 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <div class="hw-row" id="hw-rtlv4"><div class="hw-dot" id="hdot-rtlv4"></div><span class="src-name" style="color:var(--sdr0)">RTL-SDR Blog V4</span><span class="hw-price">~$40</span><span class="hw-status available" id="hst-rtlv4">AVAILABLE</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--sdr1)">HackRF One</span><span class="hw-price">~$300</span><span class="hw-status exotic">ADVANCED</span></div>
         <!-- Cameras -->
-        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--accent)">Built-in Webcam (CAM-A)</span><span class="hw-price">FREE</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row"><div class="hw-dot connected" id="near-hw-cam-dot"></div><span class="src-name" style="color:var(--accent)">Built-in Webcam (CAM-A)</span><span class="hw-price">FREE</span><span class="hw-status connected" id="near-hw-cam-status">CONNECTED</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--accent)">USB Webcam (any)</span><span class="hw-price">~$15</span><span class="hw-status available">AVAILABLE</span></div>
         <!-- Audio -->
-        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--audio)">Laptop Mic (built-in)</span><span class="hw-price">FREE</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row"><div class="hw-dot connected" id="near-hw-mic-dot"></div><span class="src-name" style="color:var(--audio)">Laptop Mic (built-in)</span><span class="hw-price">FREE</span><span class="hw-status connected" id="near-hw-mic-status">CONNECTED</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--audio)">USB Soundcard</span><span class="hw-price">~$8</span><span class="hw-status available">AVAILABLE</span></div>
         <!-- Exotic -->
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Geiger Counter</span><span class="hw-price">~$80</span><span class="hw-status exotic">EXOTIC</span></div>
@@ -2241,16 +2241,26 @@ function setSrc(id, bps, status) {
 }
 
 // ── HARDWARE CATALOG — update based on RTL detection ──
-function updateHWCatalog(rtl0, rtl1) {
-  const isNooelec = rtl0==='LIVE';
-  ['nooelec','rtlv3','rtlv4'].forEach((id,i) => {
+function updateHWCatalog(rtl0, rtl1, camStatus, micStatus) {
+  // SDR rows: show LIVE when generating, CONNECTED when detected but idle
+  [[rtl0,'nooelec'],[rtl1,'rtlv3'],[null,'rtlv4']].forEach(([status,id]) => {
     const dot=$('hdot-'+id), st=$('hst-'+id);
-    if (!dot||!st) return;
-    if (i===0 && isNooelec) {
-      dot.className='hw-dot connected';
-      st.className='hw-status connected'; st.textContent='CONNECTED';
-    }
+    if (!dot||!st||!status||status==='—') return;
+    const isLive = status==='LIVE';
+    dot.className = 'hw-dot connected';
+    st.className  = 'hw-status connected';
+    st.textContent = isLive ? 'LIVE' : 'CONNECTED';
   });
+  // Cam row
+  const camSt=$('near-hw-cam-status');
+  if (camSt) {
+    camSt.textContent = camStatus==='LIVE' ? 'LIVE' : 'CONNECTED';
+  }
+  // Mic row
+  const micSt=$('near-hw-mic-status');
+  if (micSt) {
+    micSt.textContent = micStatus==='LIVE' ? 'LIVE' : 'CONNECTED';
+  }
 }
 
 // ── SPARKLINE ──
@@ -2339,7 +2349,7 @@ async function pollNear() {
     if (sdr1Present) { ensureSrcRow('sdr1'); setSrc('sdr1', d.rtl1_bps||0, d.rtl1_status); }
     else removeSrcRow('sdr1');
     // update src count to reflect actual rendered sources
-    updateHWCatalog(d.rtl0_status, d.rtl1_status);
+    updateHWCatalog(d.rtl0_status, d.rtl1_status, d.cam_status, d.audio_status);
     const liveN=(d.active_sources||[]).length;
     $('src-n').textContent=liveN;
     $('src-badge').textContent=`${liveN} / ${_srcRendered.size}`;

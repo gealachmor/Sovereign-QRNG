@@ -38,6 +38,7 @@ COLORS = {
     "api":     "\033[35m",   # magenta
     "rtl":     "\033[96m",   # bright cyan
     "neg":     "\033[95m",   # bright magenta
+    "true":    "\033[33m",   # amber   (TRUE quantum)
     "watch":   "\033[33m",   # yellow  (network watchdog)
     "health":  "\033[32m",   # green   (glances sidecar)
 }
@@ -72,6 +73,12 @@ SERVICES = [
         "script": RIG / "neg_entropy.py",
         "port": 8767,
         "label": "Negentropy DRBG Engine",
+    },
+    {
+        "tag":  "true",
+        "script": RIG / "true_entropy.py",
+        "port": 8765,
+        "label": "TRUE Entropy Engine (laser)",
     },
     {
         "tag":    "watch",
@@ -208,7 +215,7 @@ def kill_all():
 def banner():
     print()
     print("\033[96m  ╔══════════════════════════════════════════════════════════╗\033[0m")
-    print("\033[96m  ║   SOVEREIGN QRNG — NEAR QUANTUM  v3                     ║\033[0m")
+    print("\033[96m  ║   SOVEREIGN QRNG — NEAR + TRUE QUANTUM  v3               ║\033[0m")
     print("\033[96m  ║   Process Manager — All services in one window           ║\033[0m")
     print("\033[96m  ║   Ctrl-C to stop all                                     ║\033[0m")
     print("\033[96m  ╚══════════════════════════════════════════════════════════╝\033[0m")
@@ -231,10 +238,11 @@ def main():
 
     print()
     print("\033[96m  ═══════════════════════════════════════════════════════════\033[0m")
-    print("\033[96m  SOVEREIGN QRNG — NEAR QUANTUM ONLINE\033[0m")
+    print("\033[96m  SOVEREIGN QRNG — NEAR + TRUE QUANTUM ONLINE\033[0m")
     print("\033[96m  ═══════════════════════════════════════════════════════════\033[0m")
     print("\033[96m  Dashboard:   http://127.0.0.1:8888/near\033[0m")
     print("\033[95m  Negentropy:  http://127.0.0.1:8767/api/neg\033[0m")
+    print("\033[33m  TRUE:        http://127.0.0.1:8765/\033[0m")
     print("\033[33m  Watchdog:    http://127.0.0.1:8768/api/watchdog/status\033[0m")
     print("\033[32m  Health:      http://127.0.0.1:8888/api/health\033[0m")
     print("\033[32m  Glances:     http://127.0.0.1:8099\033[0m")
