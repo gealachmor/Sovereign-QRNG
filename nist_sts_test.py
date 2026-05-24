@@ -6,7 +6,7 @@ import numpy as np
 def frequency_test(bits):
     """NIST SP 800-22 §2.1 — monobit frequency."""
     n = len(bits)
-    s_n = np.sum(2 * bits - 1)
+    s_n = int(np.sum(bits)) * 2 - n   # cast before arithmetic — uint8 overflow gives wrong sign
     s_obs = abs(s_n) / math.sqrt(n)
     return math.erfc(s_obs / math.sqrt(2))
 
@@ -65,12 +65,21 @@ def longest_run_test(bits, block_size=128):
     return float(mean_run), float(expected)
 
 
-def run_suite(file_path, block_size=1_000_000):
+def run_suite(file_path, block_size=1_000_000, offset_mb=None):
     if not os.path.exists(file_path):
         print(f"Error: {file_path} not found.")
         return
+    offset_file = os.path.join(os.path.dirname(file_path), "near_offset.txt")
+    written = int(open(offset_file).read().strip()) if os.path.exists(offset_file) else 0
+    # Default: sample from 80% through written data to test recent entropy
+    if offset_mb is None:
+        seek_to = max(0, int(written * 0.8) - (block_size // 8))
+    else:
+        seek_to = offset_mb * 1024 * 1024
     print(f"--- NIST STS LITE: {os.path.basename(file_path)} ---")
+    print(f"Vault written:      {written // (1024*1024)} MB  |  Testing at offset: {seek_to // (1024*1024)} MB")
     with open(file_path, 'rb') as f:
+        f.seek(seek_to)
         data = f.read(block_size // 8)
     bits = np.unpackbits(np.frombuffer(data, dtype=np.uint8))
 
@@ -94,7 +103,7 @@ def run_suite(file_path, block_size=1_000_000):
         print(f"Autocorr lag=2:     p = {p_ac2:.6f}  {'[PASS]' if p_ac2   > 0.01 else '[FAIL]'}")
         print(f"Autocorr lag=8:     p = {p_ac8:.6f}  {'[PASS]' if p_ac8   > 0.01 else '[FAIL]'}")
     if lr is not None:
-        print(f"Longest Run:        mean={lr[0]:.1f}  expected≈{lr[1]:.1f}")
+        print(f"Longest Run:        mean={lr[0]:.1f}  expected~{lr[1]:.1f}")
 
 
 if __name__ == '__main__':
