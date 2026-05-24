@@ -56,7 +56,8 @@ if ($Force) {
 }
 
 # ── Ensure QRNG directories ───────────────────────────────────────────────
-foreach ($dir in @("C:\QRNG_Pool", "C:\QRNG_Pool\near_pool", "C:\QRNG_Pool\true_pool")) {
+$QPool = if ($env:QRNG_POOL_DIR) { $env:QRNG_POOL_DIR } else { "D:\STORAGE\QRNG_Pool" }
+foreach ($dir in @($QPool, "$QPool\near_pool", "$QPool\true_pool")) {
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
         Ok "Created $dir"

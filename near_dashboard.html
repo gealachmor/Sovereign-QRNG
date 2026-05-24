@@ -144,6 +144,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 .sv2{font-size:var(--sz-sm);font-weight:bold;color:var(--muted);line-height:1;margin-bottom:2px;}
 .sl2{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:.6;}
 
+/* ── CAM SCROLL AREA ── */
+.cam-scroll-area{overflow-y:auto;max-height:420px;scrollbar-width:thin;scrollbar-color:var(--bord) transparent;}
+.cam-scroll-area::-webkit-scrollbar{width:4px;}
+.cam-scroll-area::-webkit-scrollbar-track{background:transparent;}
+.cam-scroll-area::-webkit-scrollbar-thumb{background:var(--bord);border-radius:2px;}
+
 /* ── MULTI-CAM STACK ── */
 .cam-stack{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;scroll-behavior:smooth;}
 .cam-stack::-webkit-scrollbar{width:4px;}
@@ -246,9 +252,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 #tab-intel .intel-body{flex:1;min-height:0;overflow-y:auto;padding:14px 20px;display:block;}
 .intel-section{border:1px solid var(--bord);border-radius:4px;overflow:hidden;flex-shrink:0;margin-bottom:14px;}
 .intel-section:last-child{margin-bottom:4px;}
-.intel-sec-hdr{padding:10px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--bord);
+.intel-sec-hdr{padding:10px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--bord);overflow:hidden;
   display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
-.intel-sec-hdr h2{font-size:var(--sz-bdy);letter-spacing:4px;text-transform:uppercase;flex:1;}
+.intel-sec-hdr h2{font-size:clamp(10px,1.4vw,14px);letter-spacing:3px;text-transform:uppercase;flex:1;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .intel-sec-hdr .chevron{font-size:var(--sz-sm);color:var(--muted);transition:transform .3s;}
 .intel-sec-hdr.open .chevron{transform:rotate(180deg);}
 .intel-sec-body{padding:12px 16px;display:none;line-height:1.7;}
@@ -260,7 +266,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 .intel-sec-body ul{padding-left:20px;}
 .intel-sec-body li{font-size:var(--sz-sm);color:var(--text);margin-bottom:6px;}
 .intel-sec-body li b{color:var(--accent);}
-.hw-table{width:100%;border-collapse:collapse;margin-top:10px;}
+.hw-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:10px;}
+.hw-table{width:100%;min-width:560px;border-collapse:collapse;}
 .hw-table th{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--muted);
   padding:6px 10px;border-bottom:1px solid var(--bord);text-align:left;}
 .hw-table td{font-size:var(--sz-sm);padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);}
@@ -306,12 +313,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
   width:8px;height:8px;border-radius:1px;background:var(--muted);transition:.2s;}
 .lock-sw input:checked + .lock-track{border-color:var(--danger);}
 .lock-sw input:checked + .lock-track::after{left:14px;background:var(--danger);}
-#purge-btn{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
+#purge-btn,#purge-true-btn{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;
   padding:2px 7px;border:1px solid var(--muted);border-radius:2px;color:var(--muted);
   background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:all .2s;}
-#purge-btn:not(:disabled){border-color:var(--danger);color:var(--danger);animation:purgepls 1.2s ease-in-out infinite;}
-#purge-btn:disabled{opacity:.35;cursor:not-allowed;}
+#purge-btn:not(:disabled),#purge-true-btn:not(:disabled){border-color:var(--danger);color:var(--danger);animation:purgepls 1.2s ease-in-out infinite;}
+#purge-btn:disabled,#purge-true-btn:disabled{opacity:.35;cursor:not-allowed;}
 @keyframes purgepls{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px var(--danger);}}
+#purge-true-lock{display:flex;align-items:center;gap:5px;flex-shrink:0;padding-right:8px;border-right:1px solid var(--bord);}
 
 /* ── ESCHER ODE MODE BUTTONS ── */
 .ode-mode-btn{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;
@@ -337,7 +345,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 }
 
 /* ── INTEL TAB CARDS ── */
-.intel-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.intel-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px;}
 .intel-kcard{border:1px solid var(--bord);border-radius:4px;padding:12px;background:rgba(0,0,0,.2);}
 .intel-kcard-hdr{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;font-weight:bold;margin-bottom:6px;}
 .intel-kcard-body{font-size:var(--sz-sm);color:var(--text);line-height:1.7;}
@@ -351,32 +359,33 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 .src-explain-rate{font-size:var(--sz-xs);letter-spacing:1px;color:var(--muted);border-top:1px solid var(--bord);padding-top:6px;margin-top:4px;}
 ol.intel-steps{padding-left:18px;margin:6px 0 12px;}
 ol.intel-steps li{font-size:var(--sz-sm);color:var(--text);margin-bottom:8px;line-height:1.65;}
-.intel-fix-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px;}
-.intel-fix{border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:12px;background:rgba(239,68,68,.03);}
+.intel-fix-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:10px;}
+.intel-fix{border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:12px;background:rgba(239,68,68,.03);overflow:hidden;word-break:break-word;}
 .intel-fix-prob{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--danger);font-weight:bold;margin-bottom:8px;}
 ol.intel-fix-steps{padding-left:16px;margin:0;}
 ol.intel-fix-steps li{font-size:var(--sz-sm);color:var(--text);margin-bottom:5px;line-height:1.6;}
-/* ── SYSTEM ADVISOR ── */
-#advisor-panel{border-top:1px solid var(--bord);background:rgba(0,0,0,.2);flex-shrink:0;}
-.adv-header{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--bord);cursor:default;}
-.adv-indicator{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s,box-shadow .4s;}
-.adv-indicator.ok{background:var(--ok);box-shadow:0 0 6px var(--ok);}
-.adv-indicator.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);animation:dp 1.2s ease-in-out infinite;}
-.adv-indicator.thinking{background:var(--escher);animation:dp 0.7s ease-in-out infinite;}
-.adv-title{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;flex:1;color:var(--muted);}
-.adv-badge{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
-.adv-ai-tag{font-size:9px;letter-spacing:1px;border:1px solid var(--escher);color:var(--escher);padding:1px 4px;border-radius:2px;flex-shrink:0;}
-.adv-ai-tag.offline{border-color:var(--muted);color:var(--muted);}
-.adv-body{max-height:150px;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:5px;}
-.adv-body:empty::before{content:'Monitoring system…';font-size:var(--sz-xs);color:var(--muted);padding:4px 2px;letter-spacing:1px;}
-.adv-card{border:1px solid var(--bord);border-radius:3px;padding:7px 28px 7px 9px;background:rgba(0,0,0,.3);position:relative;}
-.adv-card.warn{border-color:rgba(245,158,11,.35);}
-.adv-card.ok-card{border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04);}
-.adv-card-title{font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--warn);margin-bottom:3px;font-weight:bold;}
-.adv-card-title.ok{color:var(--ok);}
-.adv-text{font-size:var(--sz-xs);color:var(--text);line-height:1.65;white-space:pre-wrap;letter-spacing:.2px;}
-.adv-dismiss{position:absolute;top:4px;right:5px;background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 4px;line-height:1;}
-.adv-dismiss:hover{color:var(--text);}
+ol.intel-fix-steps li code,ol.intel-steps li code{white-space:normal;word-break:break-all;overflow-wrap:anywhere;}
+/* ── ENTROPY HEALTH MONITOR ── */
+#health-panel,#health-panel-true{border-top:1px solid var(--bord);background:rgba(0,0,0,.2);flex-shrink:0;}
+#spark-wrap-true{flex-shrink:0;height:28px;border-top:1px solid var(--bord);background:rgba(0,0,0,.4);padding:2px 6px;}
+#spark-wrap-true canvas{width:100%;height:100%;display:block;}
+.health-header{display:flex;align-items:center;gap:7px;padding:5px 10px;border-bottom:1px solid var(--bord);}
+.health-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s,box-shadow .4s;}
+.health-dot.pass{background:var(--ok);box-shadow:0 0 5px var(--ok);}
+.health-dot.warn{background:var(--warn);box-shadow:0 0 5px var(--warn);animation:dp 1.2s ease-in-out infinite;}
+.health-dot.fail{background:var(--danger);box-shadow:0 0 6px var(--danger);animation:dp 0.7s ease-in-out infinite;}
+.health-title{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:bold;}
+.health-badge{font-size:var(--sz-xs);letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.health-sample{font-size:6px;letter-spacing:1px;color:rgba(129,140,248,.3);margin-left:auto;}
+.health-alert{background:rgba(239,68,68,.1);border-bottom:1px solid rgba(239,68,68,.3);color:var(--danger);
+  font-size:var(--sz-xs);letter-spacing:.5px;padding:5px 10px;animation:dp 2s ease-in-out infinite;}
+.health-tests{padding:6px 10px;display:flex;flex-direction:column;gap:5px;}
+.health-test{display:grid;grid-template-columns:minmax(80px,120px) minmax(55px,90px) 1fr minmax(34px,46px);align-items:center;gap:5px;}
+.health-lbl{font-size:6px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.health-val{font-size:var(--sz-xs);color:var(--text);text-align:right;font-family:'Courier New',monospace;letter-spacing:.5px;}
+.health-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
+.health-bar-fill{height:100%;border-radius:2px;transition:width .7s ease;}
+.health-status{font-size:6px;letter-spacing:1.5px;text-align:right;font-weight:bold;}
 /* ── SOVEREIGN TOOLS TAB ── */
 .tab-btn.tab-tools.active{border-color:var(--ok);color:var(--ok);
   background:rgba(34,197,94,0.08);box-shadow:0 0 8px rgba(34,197,94,0.12);}
@@ -632,7 +641,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
 .neg-recaman canvas{display:block;width:100%;height:100%;}
 
 /* Byte stream mini-vis */
-.neg-bytevis{flex-shrink:0;height:100px;background:#010208;position:relative;overflow:hidden;
+.neg-bytevis{flex-shrink:0;height:130px;background:#010208;position:relative;overflow:hidden;
   border:1px solid var(--bord);border-radius:4px;}
 .neg-bytevis canvas{display:block;width:100%;height:100%;}
 
@@ -687,9 +696,173 @@ ol.intel-steps li,ol.intel-fix-steps li,
   padding:2px 8px;border:1px solid var(--neg);border-radius:2px;color:var(--neg);
   white-space:nowrap;flex-shrink:0;animation:negpulse 3s ease-in-out infinite;}
 @keyframes negpulse{0%,100%{opacity:1;box-shadow:none}50%{opacity:.7;box-shadow:0 0 8px var(--negdim);}}
+
+/* ── AI WIZARD TOAST ── */
+#wizard-toast{
+  position:fixed;bottom:20px;right:20px;
+  background:#0a0f18;border:1px solid var(--escher);
+  padding:14px 18px;border-radius:4px;z-index:9999;
+  font-size:var(--sz-sm);max-width:320px;
+  line-height:1.75;letter-spacing:.4px;
+  box-shadow:0 0 18px rgba(192,132,252,.2);
+  opacity:0;pointer-events:none;
+  transition:opacity .4s ease;}
+#wizard-toast.visible{opacity:1;pointer-events:auto;}
+#wizard-toast b{color:var(--escher);letter-spacing:2px;display:block;margin-bottom:8px;}
+
+/* ── LASER AWAIT OVERLAY (TRUE tab viz panels) ── */
+.viz-await-overlay{
+  position:absolute;inset:0;z-index:10;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  background:rgba(8,12,16,0.82);backdrop-filter:blur(2px);
+  transition:opacity .4s ease;pointer-events:none;
+}
+.viz-await-overlay.hidden{opacity:0;}
+.viz-await-icon{font-size:22px;color:var(--true);opacity:.6;animation:dp 2.5s ease-in-out infinite;}
+.viz-await-txt{font-size:var(--sz-xs);letter-spacing:3px;text-transform:uppercase;color:var(--true);opacity:.8;}
+.viz-await-sub{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);opacity:.6;}
+
+/* ══════════════════════════════════════════════════════════
+   PIN GATE — secure overlay
+══════════════════════════════════════════════════════════ */
+#pin-gate{
+  position:fixed;inset:0;z-index:99999;
+  background:rgba(8,12,16,0.97);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+  transition:opacity .35s ease;
+}
+#pin-gate.hidden{opacity:0;pointer-events:none;}
+#pin-modal{
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(0,212,255,0.18);
+  border-radius:6px;padding:36px 40px 28px;
+  width:min(380px,90vw);
+  box-shadow:0 0 60px rgba(0,212,255,0.08),0 0 120px rgba(0,0,0,0.8);
+}
+#pin-logo-txt{font-size:clamp(13px,2vw,17px);letter-spacing:6px;color:var(--accent);
+  text-shadow:0 0 20px var(--accent);text-transform:uppercase;}
+#pin-sub-txt{font-size:9px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-top:-10px;}
+#pin-mode-lbl{font-size:11px;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-top:4px;}
+#pin-dots{display:flex;gap:12px;margin:4px 0;}
+.pin-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:1px solid rgba(0,212,255,0.3);
+  background:transparent;
+  transition:background .15s,border-color .15s,box-shadow .15s;
+}
+.pin-dot.filled{
+  background:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+}
+.pin-dot.filled.set-mode{background:var(--escher);border-color:var(--escher);box-shadow:0 0 8px var(--escher);}
+#pin-input{
+  position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;
+}
+#pin-numpad{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;
+}
+.pin-key{
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--bord);
+  border-radius:4px;
+  color:var(--text);font-family:inherit;font-size:15px;letter-spacing:1px;
+  padding:10px 0;cursor:pointer;
+  transition:background .15s,border-color .15s,box-shadow .15s;
+  user-select:none;
+}
+.pin-key:hover{background:rgba(0,212,255,0.08);border-color:rgba(0,212,255,0.3);}
+.pin-key:active{background:rgba(0,212,255,0.18);}
+.pin-key.pin-del{color:var(--warn);font-size:11px;letter-spacing:2px;}
+.pin-key.pin-ok{
+  background:rgba(0,212,255,0.06);border-color:rgba(0,212,255,0.3);
+  color:var(--accent);font-size:11px;letter-spacing:3px;
+}
+.pin-key.pin-ok:hover{background:rgba(0,212,255,0.14);}
+#pin-error{
+  font-size:10px;letter-spacing:2px;color:var(--danger);
+  text-transform:uppercase;min-height:14px;text-align:center;
+}
+#pin-lockout-bar{
+  width:100%;height:2px;background:rgba(239,68,68,0.15);border-radius:1px;overflow:hidden;display:none;
+}
+#pin-lockout-fill{height:100%;background:var(--danger);width:100%;
+  transition:width 1s linear;}
+#pin-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;margin-top:4px;
+}
+#pin-attempts{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+#pin-change-btn{
+  background:none;border:none;color:rgba(129,140,248,0.5);
+  font-family:inherit;font-size:9px;letter-spacing:2px;cursor:pointer;
+  text-transform:uppercase;padding:0;
+  transition:color .2s;
+}
+#pin-change-btn:hover{color:var(--escher);}
+/* Lock button in header */
+#lock-btn{
+  background:rgba(0,212,255,0.05);
+  border:1px solid rgba(0,212,255,0.2);
+  color:rgba(0,212,255,0.55);
+  font-family:inherit;font-size:9px;letter-spacing:2px;
+  padding:4px 10px;border-radius:3px;cursor:pointer;
+  text-transform:uppercase;white-space:nowrap;flex-shrink:0;
+  transition:background .2s,border-color .2s,color .2s;
+}
+#lock-btn:hover{background:rgba(0,212,255,0.1);border-color:var(--accent);color:var(--accent);}
+#idle-bar{
+  position:fixed;bottom:0;left:0;right:0;height:2px;z-index:9998;
+  background:rgba(0,212,255,0.08);pointer-events:none;
+}
+#idle-fill{
+  height:100%;background:var(--accent);
+  transition:width .5s linear;box-shadow:0 0 4px var(--accent);
+}
 </style>
 </head>
 <body>
+
+<!-- ══ PIN GATE OVERLAY ══ -->
+<div id="pin-gate">
+  <div id="pin-modal">
+    <div id="pin-logo-txt">◈ SOVEREIGN QRNG</div>
+    <div id="pin-sub-txt">SECURE ACCESS TERMINAL</div>
+    <div id="pin-mode-lbl">ENTER PIN</div>
+    <div id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+      <div class="pin-dot" id="pd4"></div>
+      <div class="pin-dot" id="pd5"></div>
+    </div>
+    <input id="pin-input" type="password" inputmode="numeric" maxlength="6" autocomplete="off">
+    <div id="pin-error"></div>
+    <div id="pin-numpad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key pin-del" onclick="pinDel()">⌫ DEL</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key pin-ok" onclick="pinSubmit()">ENTER</button>
+    </div>
+    <div id="pin-lockout-bar"><div id="pin-lockout-fill"></div></div>
+    <div id="pin-footer">
+      <span id="pin-attempts"></span>
+      <button id="pin-change-btn" onclick="pinStartChange()">CHANGE PIN</button>
+    </div>
+  </div>
+</div>
+<!-- idle progress bar at bottom of screen -->
+<div id="idle-bar"><div id="idle-fill" style="width:100%"></div></div>
 
 <!-- ── HEADER ── -->
 <div id="hdr">
@@ -721,7 +894,15 @@ ol.intel-steps li,ol.intel-fix-steps li,
 
   <div id="hdr-right">
     <div id="clock">--:--:--</div>
-    <div id="total-bps-hdr">— b/s</div>
+    <div id="total-bps-hdr">— bits/sec</div>
+    <button id="lock-btn" onclick="pinLock()" title="Lock dashboard">⬛ LOCK</button>
+    <button id="wizard-btn" onclick="showWizardToast()" title="AI Troubleshooting Wizard — coming soon" style="
+      background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.35);color:rgba(129,140,248,.8);
+      font-size:9px;letter-spacing:2px;padding:4px 10px;border-radius:3px;cursor:pointer;
+      font-family:inherit;text-transform:uppercase;white-space:nowrap;flex-shrink:0;
+      transition:background .2s,border-color .2s;">
+      ◈ AI WIZARD <span style="font-size:7px;opacity:.6;letter-spacing:1px;">TBC</span>
+    </button>
   </div>
 </div>
 
@@ -741,7 +922,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <span style="margin-left:auto;font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;" id="cam-count">—</span>
       </div>
       <!-- Scrollable camera list — each card full aspect ratio -->
-      <div class="cam-stack" id="cam-stack">
+      <div class="cam-stack cam-scroll-area" id="cam-stack">
         <!-- CAM-A default card (built-in, always rendered) -->
         <div class="cam-card cam-primary" id="cam-card-0" onclick="setPrimaryCam(0)">
           <div class="cam-card-bar">
@@ -763,11 +944,11 @@ ol.intel-steps li,ol.intel-fix-steps li,
       </div>
       <!-- Fixed aggregate stats below the scroll area -->
       <div class="cam-stats">
-        <div class="stat"><div class="sv cn" id="s-bps">—</div><div class="sl">Total b/s</div></div>
+        <div class="stat"><div class="sv cn" id="s-bps">—</div><div class="sl">Total bits/sec</div></div>
         <div class="stat"><div class="sv bok" id="s-bal">—</div><div class="sl" id="s-balst">Balance</div></div>
       </div>
       <div class="cam-sub">
-        <div class="sub-cell"><div class="sv2 cn" id="s-cbps">—</div><div class="sl2">Cam b/s</div></div>
+        <div class="sub-cell"><div class="sv2 cn" id="s-cbps">—</div><div class="sl2">Cam bits/sec</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--muted)" id="s-fps">—</div><div class="sl2">FPS</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="s-chunks">—</div><div class="sl2">Chunks</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="s-gb">—</div><div class="sl2">GB</div></div>
@@ -856,15 +1037,16 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Lava Lamp + Cam</span><span class="hw-price">~$20</span><span class="hw-status exotic">EXOTIC</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Avalanche Noise Diode</span><span class="hw-price">~$15</span><span class="hw-status exotic">EXOTIC</span></div>
       </div>
-      <!-- SYSTEM ADVISOR -->
-      <div id="advisor-panel">
-        <div class="adv-header">
-          <div class="adv-indicator" id="adv-dot"></div>
-          <span class="adv-title">SYSTEM ADVISOR</span>
-          <span class="adv-badge" id="adv-badge">STARTING</span>
-          <span class="adv-ai-tag offline" id="adv-ai-tag" title="Ollama offline — using static advisor">AI</span>
+      <!-- ENTROPY HEALTH MONITOR -->
+      <div id="health-panel">
+        <div class="health-header">
+          <div class="health-dot" id="hlth-dot"></div>
+          <span class="health-title">◈ ENTROPY HEALTH</span>
+          <span class="health-badge" id="hlth-badge">TESTING…</span>
+          <span class="health-sample" id="hlth-sample"></span>
         </div>
-        <div id="adv-body" class="adv-body"></div>
+        <div id="health-alert" class="health-alert" style="display:none;"></div>
+        <div class="health-tests" id="health-tests"></div>
       </div>
     </div>
 
@@ -901,7 +1083,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <span class="badge dim" id="true-cam-badge">OFFLINE</span>
         <span style="margin-left:auto;font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;" id="true-cam-count">—</span>
       </div>
-      <div class="cam-stack" id="true-cam-stack">
+      <div class="cam-stack cam-scroll-area" id="true-cam-stack">
         <div class="cam-card cam-primary" id="true-cam-card-0" onclick="setTruePrimaryCam(0)">
           <div class="cam-card-bar">
             <div class="sdot" id="true-cam-sdot-0" data-src="cam"></div>
@@ -921,11 +1103,11 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <!-- Additional laser cameras appended dynamically by initTrueCamStack() -->
       </div>
       <div class="cam-stats">
-        <div class="stat"><div class="sv" style="color:var(--true);text-shadow:0 0 8px rgba(245,158,11,.4)" id="t-bps">—</div><div class="sl">Total b/s</div></div>
+        <div class="stat"><div class="sv" style="color:var(--true);text-shadow:0 0 8px rgba(245,158,11,.4)" id="t-bps">—</div><div class="sl">Total bits/sec</div></div>
         <div class="stat"><div class="sv bok" id="t-bal">—</div><div class="sl">Balance</div></div>
       </div>
       <div class="cam-sub">
-        <div class="sub-cell"><div class="sv2" style="color:var(--true)" id="t-cbps">—</div><div class="sl2">Cam b/s</div></div>
+        <div class="sub-cell"><div class="sv2" style="color:var(--true)" id="t-cbps">—</div><div class="sl2">Cam bits/sec</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--muted)" id="t-fps">—</div><div class="sl2">FPS</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="t-chunks">—</div><div class="sl2">Chunks</div></div>
         <div class="sub-cell"><div class="sv2" style="color:var(--escher)" id="t-gb">—</div><div class="sl2">GB</div></div>
@@ -947,8 +1129,13 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <span style="color:rgba(245,158,11,0.45)">3D ORBIT</span>
           <span style="color:#f59e0b;margin-left:auto" id="lorenz-traj-true">TRAJ:1</span>
         </div>
-        <div class="math-wrap">
+        <div class="math-wrap" style="position:relative;">
           <canvas id="math-canvas-true"></canvas>
+          <div id="lorenz-true-overlay" class="viz-await-overlay">
+            <span class="viz-await-icon">◎</span>
+            <span class="viz-await-txt">AWAITING LASER SOURCE</span>
+            <span class="viz-await-sub">Aim laser at USB webcam · keep room dark</span>
+          </div>
         </div>
       </div>
       <div class="panel glow-escher" style="flex:1;min-height:0;">
@@ -972,15 +1159,21 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <button class="ode-mode-btn" id="ode-t-1" onclick="setOdeMode(1)">SPIRAL</button>
           <button class="ode-mode-btn" id="ode-t-2" onclick="setOdeMode(2)">WAVE</button>
         </div>
-        <div class="escher-split">
+        <div class="escher-split" style="position:relative;">
           <div class="escher-disk-wrap"><canvas id="escher-canvas-true"></canvas></div>
           <div class="escher-ode-wrap"><canvas id="escher-ode-canvas-true"></canvas></div>
+          <div id="escher-true-overlay" class="viz-await-overlay">
+            <span class="viz-await-icon" style="color:var(--escher)">⬡</span>
+            <span class="viz-await-txt" style="color:var(--escher)">AWAITING LASER SOURCE</span>
+            <span class="viz-await-sub">Photon shot noise feeds Escher cascade</span>
+          </div>
         </div>
         <div id="quality-strip-true">
           <span class="ql">SHANNON H</span>
           <div class="qbar-track"><div class="qbar-fill" id="qbar-true" style="width:50%"></div></div>
           <span class="qval" id="qval-true">—</span>
         </div>
+        <div id="spark-wrap-true"><canvas id="spark-canvas-true"></canvas></div>
       </div>
     </div>
 
@@ -993,14 +1186,14 @@ ol.intel-steps li,ol.intel-fix-steps li,
       <div class="src-list">
         <div class="src-row">
           <div class="sdot" id="td-cam" data-src="cam"></div>
-          <span class="src-name" style="color:var(--true)">LASER CAM · CAM-B</span>
+          <span class="src-name" style="color:var(--true)" id="true-cam-src-name">LASER CAM · —</span>
           <span class="src-bps" id="tb-cam">—</span>
           <span class="src-status" id="tst-cam">OFFLINE</span>
         </div>
       </div>
       <div class="hw-catalog">
         <div class="hw-header">TRUE QUANTUM HARDWARE</div>
-        <div class="hw-row"><div class="hw-dot connected"></div><span class="src-name" style="color:var(--true)">USB Webcam · CAM-B</span><span class="hw-price">~$15</span><span class="hw-status connected">CONNECTED</span></div>
+        <div class="hw-row" id="true-hw-cam-row"><div class="hw-dot" id="true-hw-cam-dot"></div><span class="src-name" style="color:var(--true)" id="true-hw-cam-name">USB Webcam · —</span><span class="hw-price">~$15</span><span class="hw-status" id="true-hw-cam-status">SEARCHING</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--true)">Laser Pointer 650nm</span><span class="hw-price">~$5</span><span class="hw-status available">NEEDED</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--true)">Laser Diode Module</span><span class="hw-price">~$8</span><span class="hw-status available">BETTER</span></div>
         <div class="hw-row"><div class="hw-dot"></div><span class="src-name" style="color:var(--escher)">Single Photon Detector</span><span class="hw-price">~$500+</span><span class="hw-status exotic">RESEARCH</span></div>
@@ -1008,7 +1201,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <div style="padding:10px 12px;font-size:var(--sz-sm);line-height:1.7;color:var(--muted);">
           1. Aim laser at webcam lens<br>
           2. Keep room dark<br>
-          3. Run <code style="color:var(--sdr0)">python true_entropy.py</code><br>
+          3. Start via <code style="color:var(--sdr0)">process_manager.py</code><br>
           4. Laser shot noise → photon counting → quantum randomness
         </div>
       </div>
@@ -1016,15 +1209,33 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <div style="font-size:var(--sz-xs);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">TRUE VAULT</div>
         <div style="font-size:var(--sz-sm);color:var(--true)" id="t-vault-info">0.0000 / 10.00 GB</div>
       </div>
+      <!-- ENTROPY HEALTH MONITOR — TRUE QUANTUM (mirrors NEAR tab right panel) -->
+      <div id="health-panel-true">
+        <div class="health-header">
+          <div class="health-dot" id="hlth-dot-true"></div>
+          <span class="health-title" style="color:var(--true);">◈ TRUE VAULT HEALTH</span>
+          <span class="health-badge" id="hlth-badge-true">TESTING…</span>
+          <span class="health-sample" id="hlth-sample-true"></span>
+        </div>
+        <div id="health-alert-true" class="health-alert" style="display:none;"></div>
+        <div class="health-tests" id="health-tests-true"></div>
+      </div>
     </div>
 
   </div><!-- /main-grid true -->
 
   <div id="bottom-true">
+    <div id="purge-true-lock">
+      <span class="purge-lbl">PURGE</span>
+      <label class="lock-sw" title="Lock I"><input type="checkbox" id="tlock1" onchange="checkTruePurgeLocks()"><div class="lock-track"></div></label>
+      <label class="lock-sw" title="Lock II"><input type="checkbox" id="tlock2" onchange="checkTruePurgeLocks()"><div class="lock-track"></div></label>
+      <label class="lock-sw" title="Lock III"><input type="checkbox" id="tlock3" onchange="checkTruePurgeLocks()"><div class="lock-track"></div></label>
+      <button id="purge-true-btn" disabled onclick="doPurgeTrue()">⚠ PURGE</button>
+    </div>
     <div id="true-engine-status">
       <span class="purge-lbl" style="color:var(--warn)">ENGINE</span>
       <span id="true-eng-badge" style="font-size:var(--sz-xs);letter-spacing:2px;text-transform:uppercase;color:var(--warn);border:1px solid var(--warn);border-radius:2px;padding:1px 6px;white-space:nowrap;">OFFLINE</span>
-      <span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;white-space:nowrap;">· run true_entropy.py</span>
+      <span id="true-eng-hint" style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:1px;white-space:nowrap;">· start process_manager.py</span>
     </div>
     <div class="vault-row">
       <span class="vl" style="color:var(--true)">TRUE VAULT</span>
@@ -1104,27 +1315,27 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <div class="src-explain-card">
             <div class="src-explain-hdr" style="color:var(--ok)">WEBCAM · CAM-A</div>
             <div class="src-explain-body"><p>Your camera sensor contains millions of light-detecting wells. Even in darkness, <b>stray photons and electron thermal motion</b> create random noise in every pixel. We grab the least-significant bit of each colour channel — the noisiest part — and extract the randomness from the difference between frames.</p></div>
-            <div class="src-explain-rate">~3,000 bit/s · always available · no extra hardware</div>
+            <div class="src-explain-rate">~3,000 bits/sec · always available · no extra hardware</div>
           </div>
           <div class="src-explain-card">
             <div class="src-explain-hdr" style="color:var(--sdr0)">RTL-SDR RADIO</div>
             <div class="src-explain-body"><p>A $25 USB radio dongle contains an ADC that samples the air 256,000 times per second. Tuned to a quiet frequency, <b>all it picks up is thermal Johnson noise</b> — the random motion of electrons in the antenna. Impossible to predict or reproduce.</p></div>
-            <div class="src-explain-rate">~8,000 bit/s · best near-quantum source available</div>
+            <div class="src-explain-rate">~8,000 bits/sec · best near-quantum source available</div>
           </div>
           <div class="src-explain-card">
             <div class="src-explain-hdr" style="color:#a78bfa">CPU JITTER</div>
             <div class="src-explain-body"><p>Your processor's clock is not perfectly stable. Cache misses, interrupt handling, and pipeline stalls cause <b>sub-nanosecond timing variations</b> that are unpredictable. We measure these with a high-resolution timer and XOR with Windows CNG (BCryptGenRandom).</p></div>
-            <div class="src-explain-rate">~8,000 bit/s · pure software · no hardware needed</div>
+            <div class="src-explain-rate">~8,000 bits/sec · pure software · no hardware needed</div>
           </div>
           <div class="src-explain-card">
             <div class="src-explain-hdr" style="color:#34d399">MICROPHONE ADC</div>
             <div class="src-explain-body"><p>Your microphone amplifier generates <b>thermal noise</b> even in silence — electrons jiggling due to heat. At 44.1 kHz, the least-significant bits of every audio sample contain this pure physical noise. Slow but always present.</p></div>
-            <div class="src-explain-rate">~700 bit/s · slow but always available</div>
+            <div class="src-explain-rate">~700 bits/sec · slow but always available</div>
           </div>
           <div class="src-explain-card" style="border-color:rgba(245,158,11,.3)">
             <div class="src-explain-hdr" style="color:var(--true)">LASER CAM · TRUE QUANTUM</div>
             <div class="src-explain-body"><p>Photons from a laser arrive at the camera sensor one by one. Quantum mechanics makes their <b>exact arrival times fundamentally unknowable</b> — not just hard to predict, but provably impossible by the laws of physics. This is Poisson shot noise: the purest randomness in the universe.</p></div>
-            <div class="src-explain-rate">~6,000 bit/s · TRUE quantum mechanical</div>
+            <div class="src-explain-rate">~6,000 bits/sec · TRUE quantum mechanical</div>
           </div>
           <div class="src-explain-card">
             <div class="src-explain-hdr" style="color:var(--escher)">ESCHER-6 CASCADE</div>
@@ -1140,19 +1351,19 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <h2 style="color:var(--warn)">◈ HARDWARE CATALOG</h2><span class="chevron">▼</span>
       </div>
       <div class="intel-sec-body">
-        <table class="hw-table">
+        <div class="hw-table-scroll"><table class="hw-table">
           <tr><th>Device</th><th>Type</th><th>Cost</th><th>Entropy/s</th><th>Notes</th></tr>
-          <tr><td>Built-in laptop webcam</td><td>Near QM</td><td>FREE</td><td>~3,000 b/s</td><td>Always available — baseline source</td></tr>
-          <tr><td>NooElec NESDR SMArt XTR<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$25</td><td>~8,000 b/s</td><td>Best value. Plug in + Zadig libusbK driver</td></tr>
-          <tr><td>RTL-SDR Blog V3/V4<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$30–40</td><td>~8,000 b/s</td><td>Metal case, direct sampling. Also good.</td></tr>
-          <tr><td>HackRF One<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$300</td><td>~20,000 b/s</td><td>Full duplex, 1 MHz–6 GHz. Excellent if you have one.</td></tr>
-          <tr><td>USB Webcam (any)<span class="tag-q">CAM</span></td><td>Near QM</td><td>~$15</td><td>~3,000 b/s</td><td>Extra camera source, or use for laser shot (TRUE)</td></tr>
-          <tr><td>USB Soundcard (PCM2902)</td><td>Near QM</td><td>~$8</td><td>~700 b/s</td><td>Cleaner than built-in mic. Lower noise floor.</td></tr>
-          <tr><td>Laser pointer 650nm + USB webcam<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$20</td><td>~6,000 b/s</td><td>Point laser at webcam in dark room. Quantum shot noise.</td></tr>
-          <tr><td>Laser diode module<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$8</td><td>~8,000 b/s</td><td>More stable beam than a pointer. Better entropy rate.</td></tr>
-          <tr><td>Avalanche noise diode</td><td>Exotic</td><td>~$15</td><td>~50,000 b/s</td><td>Zener in reverse breakdown. Very high rate.</td></tr>
-          <tr><td>Geiger counter</td><td>Exotic</td><td>~$80</td><td>~200 b/s</td><td>Nuclear decay = true QM. Very slow but pure.</td></tr>
-        </table>
+          <tr><td>Built-in laptop webcam</td><td>Near QM</td><td>FREE</td><td>~3,000 bits/sec</td><td>Always available — baseline source</td></tr>
+          <tr><td>NooElec NESDR SMArt XTR<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$25</td><td>~8,000 bits/sec</td><td>Best value. Plug in + Zadig libusbK driver</td></tr>
+          <tr><td>RTL-SDR Blog V3/V4<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$30–40</td><td>~8,000 bits/sec</td><td>Metal case, direct sampling. Also good.</td></tr>
+          <tr><td>HackRF One<span class="tag-q">SDR</span></td><td>Near QM</td><td>~$300</td><td>~20,000 bits/sec</td><td>Full duplex, 1 MHz–6 GHz. Excellent if you have one.</td></tr>
+          <tr><td>USB Webcam (any)<span class="tag-q">CAM</span></td><td>Near QM</td><td>~$15</td><td>~3,000 bits/sec</td><td>Extra camera source, or use for laser shot (TRUE)</td></tr>
+          <tr><td>USB Soundcard (PCM2902)</td><td>Near QM</td><td>~$8</td><td>~700 bits/sec</td><td>Cleaner than built-in mic. Lower noise floor.</td></tr>
+          <tr><td>Laser pointer 650nm + USB webcam<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$20</td><td>~6,000 bits/sec</td><td>Point laser at webcam in dark room. Quantum shot noise.</td></tr>
+          <tr><td>Laser diode module<span class="tag-t">TRUE</span></td><td>TRUE QM</td><td>~$8</td><td>~8,000 bits/sec</td><td>More stable beam than a pointer. Better entropy rate.</td></tr>
+          <tr><td>Avalanche noise diode</td><td>Exotic</td><td>~$15</td><td>~50,000 bits/sec</td><td>Zener in reverse breakdown. Very high rate.</td></tr>
+          <tr><td>Geiger counter</td><td>Exotic</td><td>~$80</td><td>~200 bits/sec</td><td>Nuclear decay = true QM. Very slow but pure.</td></tr>
+        </table></div>
       </div>
     </div>
 
@@ -1183,12 +1394,12 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <li>Plug in the USB webcam — it appears as CAM-B in the TRUE QUANTUM tab</li>
           <li>Run <code>python true_entropy.py</code> to start the TRUE engine</li>
         </ol>
-        <h3>AI ADVISOR (AUTOMATIC HELP)</h3>
+        <h3>ENTROPY HEALTH MONITOR (AUTOMATIC)</h3>
         <ol class="intel-steps">
-          <li>Install Ollama from <code>ollama.com</code></li>
-          <li>Run in a terminal: <code>ollama pull gemma2:2b</code></li>
-          <li>The SYSTEM ADVISOR panel activates automatically — no other setup needed</li>
-          <li>When anything goes wrong, the advisor diagnoses it and shows fix steps instantly</li>
+          <li>The ENTROPY HEALTH panel runs automatically at the bottom of the NEAR QUANTUM tab</li>
+          <li>Samples 1024 bytes from the live vault every 6 seconds and runs 4 statistical tests</li>
+          <li>Tests: Bit Balance · Shannon Entropy · Chi-Squared uniformity · Longest Runs</li>
+          <li>Any FAIL triggers a red alert banner — indicates a faulty or exhausted entropy pool</li>
         </ol>
       </div>
     </div>
@@ -1200,56 +1411,123 @@ ol.intel-steps li,ol.intel-fix-steps li,
       <div class="intel-sec-body">
         <div id="wiz-container"></div>
         <div class="intel-fix-grid">
+
+          <!-- 1: RTL-SDR 10-second dropout -->
           <div class="intel-fix">
-            <div class="intel-fix-prob">RTL-SDR shows OFFLINE</div>
+            <div class="intel-fix-prob">RTL-SDR: 10-second dropout</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> Windows USB selective suspend re-engaging at hub level even after powercfg — must be disabled at 3 levels simultaneously.
+            </p>
             <ol class="intel-fix-steps">
-              <li>Check USB cable and try a different port</li>
-              <li>Open Zadig → install <b>libusbK</b> driver (not WinUSB)</li>
-              <li>Disable USB selective suspend in Device Manager</li>
-              <li>Restart near_entropy.py</li>
+              <li>Power Options → Change plan settings → Change advanced → USB settings → USB selective suspend → <b>Disabled</b></li>
+              <li>Registry: <code>HKLM\SYSTEM\CurrentControlSet\Services\USB</code> → set <code>DisableSelectiveSuspend = 1</code> (DWORD)</li>
+              <li>Device Manager → Universal Serial Bus controllers → each <b>USB Root Hub</b> → Properties → Power Management → <b>uncheck</b> "Allow the computer to turn off this device to save power"</li>
+              <li>Repeat step 3 for every USB Root Hub and Generic Hub listed</li>
+              <li><b>Reboot required</b> — changes are not effective until restart</li>
             </ol>
           </div>
+
+          <!-- 2: Failed to open rtlsdr device #0 -->
           <div class="intel-fix">
-            <div class="intel-fix-prob">RTL-SDR drops every ~10 seconds</div>
+            <div class="intel-fix-prob">RTL-SDR: "Failed to open rtlsdr device #0"</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> Wrong driver installed (WinUSB instead of libusbK), or driver was never installed.
+            </p>
             <ol class="intel-fix-steps">
-              <li>This is Windows USB selective suspend cutting power</li>
-              <li>Device Manager → Universal Serial Bus → USB Root Hub</li>
-              <li>Properties → Power Management → uncheck "Allow computer to turn off this device"</li>
-              <li>Repeat for every root hub listed</li>
+              <li>Download <b>Zadig</b> from <code>zadig.akeo.ie</code>, run as Administrator</li>
+              <li>Options → <b>List All Devices</b> (must enable this first)</li>
+              <li>Select <b>RTL2832U</b> (or "Bulk-In, Interface 0")</li>
+              <li>Choose driver: <b style="color:var(--ok)">libusbK</b> — <b style="color:var(--danger)">NOT WinUSB</b></li>
+              <li>Click <b>Install Driver</b> (or Replace Driver if WinUSB was previously installed)</li>
+              <li>If previously installed WinUSB: Device Manager → Uninstall Device → check <b>"Delete driver software"</b> → reinstall via Zadig</li>
             </ol>
           </div>
-          <div class="intel-fix">
-            <div class="intel-fix-prob">Camera shows OFFLINE</div>
+
+          <!-- 3: Webcam shows as OFFLINE -->
+          <div class="intel-fix" style="border-color:rgba(245,158,11,.2);background:rgba(245,158,11,.03);">
+            <div class="intel-fix-prob" style="color:var(--warn);">Webcam shows as OFFLINE</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause (a):</b> Another app is using camera index 0. <b>Cause (b):</b> Device is not a video camera — USB audio headsets and AirPods enumerate as audio/HID, not video. OpenCV's DirectShow scan ignores them but they shift camera index numbering.
+            </p>
             <ol class="intel-fix-steps">
-              <li>Verify webcam_server.py is running on port 8090</li>
-              <li>Try replugging the USB camera</li>
-              <li>Run: <code>python webcam_server.py</code></li>
+              <li>Close all other apps that could use the camera (Teams, Zoom, Camera app, OBS)</li>
+              <li>Check Device Manager → <b>Cameras</b> category (not "Audio inputs and outputs")</li>
+              <li>If only audio devices show, your "camera" may be a headset — unplug it and recheck</li>
+              <li>Run <code>python webcam_server.py</code> — watch console for "Camera X: [device name]" to identify correct index</li>
+              <li>Re-run: <code>python webcam_server.py --index 1</code> if built-in is on index 1</li>
             </ol>
           </div>
+
+          <!-- 4: TRUE vault filling without laser -->
           <div class="intel-fix">
-            <div class="intel-fix-prob">Audio shows OFFLINE</div>
+            <div class="intel-fix-prob">TRUE vault filling without laser connected</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> true_entropy.py uses permissive thresholds (LASER_MIN=5, NOISE_FLOOR=0.001) that accept any bright image as a valid laser source. Thermal webcam noise passes the check without a real laser.
+            </p>
             <ol class="intel-fix-steps">
-              <li>Windows Settings → Sound → check microphone is not muted</li>
-              <li>Windows Settings → Privacy → Microphone → allow app access</li>
-              <li>Restart near_entropy.py</li>
+              <li>This is NOT true quantum randomness — it is ordinary thermal noise mislabeled</li>
+              <li>Use the triple-lock <b>PURGE</b> button on the TRUE QUANTUM tab to wipe the vault</li>
+              <li>Do NOT run <code>true_entropy.py</code> until you have a physical laser source set up</li>
+              <li>Required: laser pointer (650 nm) or laser diode module aimed at USB webcam in a dark room</li>
             </ol>
           </div>
+
+          <!-- 5: entropy_api.py SyntaxError invalid character -->
           <div class="intel-fix">
-            <div class="intel-fix-prob">Entropy rate is very low</div>
+            <div class="intel-fix-prob">entropy_api.py SyntaxError: invalid character</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> File saved with UTF-8 BOM (0xEF BB BF) or curly quotes (U+201C / U+201D) from a text editor. Python's tokenizer rejects both.
+            </p>
             <ol class="intel-fix-steps">
-              <li>Verify all 4 sources show LIVE in the NEAR QUANTUM tab</li>
-              <li>RTL-SDR gain should be 29 dB — check near_entropy.py</li>
-              <li>Move SDR antenna away from USB 3.0 cables (cause interference)</li>
+              <li>Re-save the file with <b>UTF-8 without BOM</b> (in Notepad++: Encoding → UTF-8 without BOM)</li>
+              <li>Or in PowerShell: <code>[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))</code></li>
+              <li>Search the file for curly quotes: <code>"</code> (U+201C) and <code>"</code> (U+201D) — replace with straight <code>"</code></li>
+              <li>Verify: <code>python -c "import ast; ast.parse(open('entropy_api.py').read())"</code> — no output = clean</li>
             </ol>
           </div>
-          <div class="intel-fix">
-            <div class="intel-fix-prob">Vault is not filling</div>
+
+          <!-- 6: Services won't start / port already in use -->
+          <div class="intel-fix" style="border-color:rgba(245,158,11,.2);background:rgba(245,158,11,.03);">
+            <div class="intel-fix-prob" style="color:var(--warn);">Services won't start / port already in use</div>
+            <p style="font-size:var(--sz-xs);color:var(--warn);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> Previous Python process still running and holding the port. Common after a crash or if process_manager.py was force-closed.
+            </p>
             <ol class="intel-fix-steps">
-              <li>Check <code>C:\QRNG_Pool\</code> has free disk space</li>
-              <li>Verify near_entropy.py is running on port 8766</li>
-              <li>Check near_offset.txt contains a plain number (not corrupted)</li>
+              <li>Kill all Python processes: <code>Get-Process python | Stop-Process -Force</code></li>
+              <li>Check port 8888: <code>netstat -ano | findstr 8888</code> — kill the PID if still listed</li>
+              <li>Check port 8767: <code>netstat -ano | findstr 8767</code> — same</li>
+              <li>Re-run: <code>python process_manager.py</code></li>
             </ol>
           </div>
+
+          <!-- 7: UnicodeEncodeError on startup -->
+          <div class="intel-fix">
+            <div class="intel-fix-prob">UnicodeEncodeError: box-drawing characters on startup</div>
+            <p style="font-size:var(--sz-xs);color:var(--muted);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> Windows console using cp1252 codepage (default), which cannot render Unicode box-drawing characters (═, ║, etc.) used in startup banners.
+            </p>
+            <ol class="intel-fix-steps">
+              <li>This is already handled in <code>process_manager.py</code> via <code>sys.stdout.reconfigure(encoding='utf-8', errors='replace')</code></li>
+              <li>If still failing: run <code>chcp 65001</code> in the terminal before launching</li>
+              <li>Or launch via PowerShell with: <code>$env:PYTHONIOENCODING='utf-8'; python process_manager.py</code></li>
+              <li>Permanent fix: Windows Settings → Time &amp; language → Language → Administrative language settings → Change system locale → check "Beta: Use Unicode UTF-8 for worldwide language support"</li>
+            </ol>
+          </div>
+
+          <!-- 8: Negentropy DRBG shows NOT SEEDED -->
+          <div class="intel-fix" style="border-color:rgba(129,140,248,.2);background:rgba(129,140,248,.03);">
+            <div class="intel-fix-prob" style="color:var(--neg);">Negentropy DRBG shows "NOT SEEDED"</div>
+            <p style="font-size:var(--sz-xs);color:var(--muted);margin-bottom:6px;letter-spacing:.4px;">
+              <b>Cause:</b> NEAR vault has fewer than 32 bytes available. This happens immediately after a vault PURGE or on a completely fresh install before entropy has accumulated.
+            </p>
+            <ol class="intel-fix-steps">
+              <li>Verify near_entropy.py is running and at least one source shows <b style="color:var(--ok)">LIVE</b></li>
+              <li>Wait 30 seconds for entropy to accumulate (cam + CPU sources generate ~3,000–8,000 bits/sec)</li>
+              <li>The DRBG seeds automatically once 32+ bytes are in the vault — no manual action needed</li>
+              <li>If still showing NOT SEEDED after 60s: check the NEAR vault fill bar is increasing in the bottom status bar</li>
+            </ol>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1259,13 +1537,18 @@ ol.intel-steps li,ol.intel-fix-steps li,
         <h2 style="color:var(--escher)">◈ API REFERENCE</h2><span class="chevron">▼</span>
       </div>
       <div class="intel-sec-body">
-        <table class="hw-table">
-          <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
-          <tr><td><code>/api/near</code></td><td>GET</td><td>Near entropy engine live stats JSON</td></tr>
-          <tr><td><code>/api/true</code></td><td>GET</td><td>True entropy engine live stats JSON</td></tr>
-          <tr><td><code>/api/bytes?n=N</code></td><td>GET</td><td>N raw entropy bytes as hex (max 4096)</td></tr>
-          <tr><td><code>/api/purge_near</code></td><td>POST</td><td>Zero and reset the NEAR vault (triple-lock required)</td></tr>
-        </table>
+        <div class="hw-table-scroll"><table class="hw-table">
+          <tr><th>Endpoint</th><th>Port</th><th>Method</th><th>Description</th></tr>
+          <tr><td><code>/api/near</code></td><td>8888</td><td>GET</td><td>NEAR entropy engine live stats JSON</td></tr>
+          <tr><td><code>/api/true</code></td><td>8888</td><td>GET</td><td>TRUE entropy engine live stats JSON</td></tr>
+          <tr><td><code>/api/bytes?n=N</code></td><td>8888</td><td>GET</td><td>N raw entropy bytes as hex (max 4096)</td></tr>
+          <tr><td><code>/api/purge_near</code></td><td>8888</td><td>POST</td><td>Zero and reset the NEAR vault (triple-lock required)</td></tr>
+          <tr><td><code>/api/purge_true</code></td><td>8888</td><td>POST</td><td>Zero and reset the TRUE vault (triple-lock required)</td></tr>
+          <tr><td><code>/api/neg</code></td><td>8767</td><td>GET</td><td>Negentropy DRBG live status JSON</td></tr>
+          <tr><td><code>/api/neg/bytes?n=N</code></td><td>8767</td><td>GET</td><td>N pure DRBG bytes as hex (max 4096)</td></tr>
+          <tr><td><code>/api/neg/blend?n=N</code></td><td>8767</td><td>GET</td><td>N bytes — quantum XOR'd with DRBG (best of both)</td></tr>
+          <tr><td><code>/api/neg/reseed</code></td><td>8767</td><td>POST</td><td>Trigger manual DRBG reseed from quantum vault</td></tr>
+        </table></div>
       </div>
     </div>
 
@@ -1420,7 +1703,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
       </div>
 
       <div class="neg-stat-grid">
-        <div class="neg-stat"><div class="neg-sv" id="nd-bps">—</div><div class="neg-sl">Rate b/s</div><div class="neg-stat-ctx">CPU-speed deterministic</div></div>
+        <div class="neg-stat"><div class="neg-sv" id="nd-bps">—</div><div class="neg-sl">Rate bits/sec</div><div class="neg-stat-ctx">CPU-speed deterministic</div></div>
         <div class="neg-stat"><div class="neg-sv" id="nd-gen">—</div><div class="neg-sl">Bytes Out</div><div class="neg-stat-ctx">this session</div></div>
         <div class="neg-stat"><div class="neg-sv" id="nd-rc">—</div><div class="neg-sl">Reseeds</div><div class="neg-stat-ctx">auto every 1 GB</div></div>
         <div class="neg-stat"><div class="neg-sv" style="color:var(--sdr0)" id="nd-cap">∞</div><div class="neg-sl">Capacity</div><div class="neg-stat-ctx">mathematically infinite</div></div>
@@ -1455,7 +1738,7 @@ ol.intel-steps li,ol.intel-fix-steps li,
           <span style="color:var(--neg);letter-spacing:2px;font-size:var(--sz-xs);">◈ SEEDING CHAIN</span>
           <span style="margin-left:auto;font-size:6px;color:rgba(129,140,248,.45);letter-spacing:1px;">quantum seeds math → math outputs ∞</span>
         </div>
-        <canvas id="neg-flow-canvas" style="height:74px;display:block;width:100%;"></canvas>
+        <canvas id="neg-flow-canvas" style="height:96px;display:block;width:100%;"></canvas>
       </div>
 
       <div class="panel neg-recaman" style="border-color:rgba(129,140,248,.2);">
@@ -1471,8 +1754,8 @@ ol.intel-steps li,ol.intel-fix-steps li,
 
       <div class="panel neg-bytevis" style="border-color:rgba(129,140,248,.2);">
         <div class="canvas-info pbar" style="padding:3px 8px;">
-          <span style="font-size:var(--sz-xs);color:var(--muted);letter-spacing:2px;">BYTE DISTRIBUTION</span>
-          <span style="font-size:6px;letter-spacing:.5px;color:rgba(34,197,94,.55);">flat line = perfect uniformity</span>
+          <span style="font-size:var(--sz-xs);color:var(--neg);letter-spacing:2px;">◈ ENTROPY STREAM</span>
+          <span style="font-size:6px;letter-spacing:.5px;color:rgba(192,132,252,.55);">scrolling live DRBG output</span>
           <span id="neg-last-src" style="margin-left:auto;font-size:var(--sz-xs);color:var(--neg);letter-spacing:1px;">—</span>
         </div>
         <canvas id="neg-byte-canvas"></canvas>
@@ -1616,12 +1899,19 @@ ol.intel-steps li,ol.intel-fix-steps li,
   </div>
 </div>
 
+<!-- AI WIZARD TOAST -->
+<div id="wizard-toast">
+  <b>◈ AI WIZARD — COMING SOON</b>
+  We're actively building an AI-powered setup wizard that will guide you through hardware configuration, entropy source troubleshooting, and vault health diagnostics.<br><br>
+  Check back in the next release.
+</div>
+
 <!-- SDR SETUP MODAL -->
 <div id="sdr-modal">
   <div id="sdr-box">
     <button id="sdr-close" onclick="closeSDRModal()">✕</button>
     <h2>RTL-SDR Setup Guide</h2>
-    <div class="sdr-step"><div class="sdr-num">1</div><div class="sdr-text">Download <strong>Zadig</strong> from <code>zadig.akeo.ie</code>, run as Admin. Plug dongle, select <strong>RTL2832U</strong> → <strong>WinUSB</strong> → Install Driver.</div></div>
+    <div class="sdr-step"><div class="sdr-num">1</div><div class="sdr-text">Download <strong>Zadig</strong> from <code>zadig.akeo.ie</code>, run as Admin. Plug dongle, select <strong>RTL2832U</strong> → <strong style="color:#22c55e">libusbK</strong> (NOT WinUSB) → Install Driver.</div></div>
     <div class="sdr-step"><div class="sdr-num">2</div><div class="sdr-text">Install: <code>pip install pyrtlsdr pyrtlsdrlib</code></div></div>
     <div class="sdr-step"><div class="sdr-num">3</div><div class="sdr-text">Plug dongle. NEAR engine auto-detects within 8 s. Status turns <strong style="color:var(--ok)">LIVE</strong>.</div></div>
   </div>
@@ -1637,7 +1927,7 @@ const fmt = v => {
   if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
   return Math.round(v).toString();
 };
-const fmtBps   = v => fmt(v)+' b/s';
+const fmtBps   = v => fmt(v)+' bits/sec';
 const fmtBytes = b => {
   if (b >= 1073741824) return (b/1073741824).toFixed(4)+' GB';
   if (b >= 1048576)    return (b/1048576).toFixed(1)+' MB';
@@ -1756,10 +2046,25 @@ async function initTrueCamStack() {
     const stack = $('true-cam-stack');
     $('true-cam-count').textContent = _trueCams.length + ' / 50';
     const camLabels = 'BCDEFGHIJKLMNOPQRSTUVWXYZ';
+    // Update hw-catalog row and source row based on actual detection
+    const hwDot    = $('true-hw-cam-dot');
+    const hwName   = $('true-hw-cam-name');
+    const hwStatus = $('true-hw-cam-status');
+    const srcName  = $('true-cam-src-name');
     if (_trueCams[0]) {
-      stack.querySelector('#true-cam-card-0 .cam-card-name').textContent =
-        'CAM-' + camLabels[0] + ' · Laser Shot';
+      const lbl = 'CAM-' + (camLabels[0] || 'B');
+      stack.querySelector('#true-cam-card-0 .cam-card-name').textContent = lbl + ' · Laser Shot';
       $('true-feed-img').src = 'http://127.0.0.1:8090' + _trueCams[0].stream;
+      if (hwDot)    { hwDot.className = 'hw-dot connected'; }
+      if (hwName)   hwName.textContent = 'USB Webcam · ' + lbl;
+      if (hwStatus) { hwStatus.textContent = 'CONNECTED'; hwStatus.className = 'hw-status connected'; }
+      if (srcName)  srcName.textContent = 'LASER CAM · ' + lbl;
+    } else {
+      // No dedicated USB cam found — show as not connected
+      if (hwDot)    { hwDot.className = 'hw-dot'; }
+      if (hwName)   hwName.textContent = 'USB Webcam · NOT FOUND';
+      if (hwStatus) { hwStatus.textContent = 'NEEDED'; hwStatus.className = 'hw-status available'; }
+      if (srcName)  srcName.textContent = 'LASER CAM · NONE';
     }
     for (let i = 1; i < _trueCams.length && i < 50; i++) {
       const c = _trueCams[i];
@@ -1785,7 +2090,12 @@ async function initTrueCamStack() {
       stack.appendChild(card);
     }
   } catch(e) {
-    $('true-cam-count').textContent = '1 / 50';
+    $('true-cam-count').textContent = '0 / 50';
+    const hwDot=$('true-hw-cam-dot'),hwStatus=$('true-hw-cam-status'),hwName=$('true-hw-cam-name'),srcName=$('true-cam-src-name');
+    if (hwDot) hwDot.className='hw-dot';
+    if (hwName) hwName.textContent='USB Webcam · NOT FOUND';
+    if (hwStatus){hwStatus.textContent='NEEDED';hwStatus.className='hw-status available';}
+    if (srcName) srcName.textContent='LASER CAM · NONE';
   }
 }
 setTimeout(initTrueCamStack, 1500);
@@ -1910,30 +2220,40 @@ function updateHWCatalog(rtl0, rtl1) {
 }
 
 // ── SPARKLINE ──
-const sparkHistory=[], SPARK_MAX=120;
-function initSpark() {
-  const cv=$('spark-canvas'), wrap=cv.parentElement;
+const sparkHistory=[], sparkHistoryTrue=[], SPARK_MAX=120;
+function _initSparkCv(id) {
+  const cv=$(id); if (!cv) return;
+  const wrap=cv.parentElement;
   cv.width=wrap.clientWidth||400; cv.height=wrap.clientHeight||24;
 }
-function drawSpark(bps) {
-  const cv=$('spark-canvas');
+function initSpark() { _initSparkCv('spark-canvas'); _initSparkCv('spark-canvas-true'); }
+function _drawSparkCv(id, hist, colour) {
+  const cv=$(id);
   if (!cv) return;
   const ctx=cv.getContext('2d'), W=cv.width, H=cv.height-4;
-  sparkHistory.push(bps);
-  if (sparkHistory.length>SPARK_MAX) sparkHistory.shift();
+  if (hist.length<2) return;
+  const max=Math.max(...hist,1);
   ctx.clearRect(0,0,W,H+4);
-  if (sparkHistory.length<2) return;
-  const max=Math.max(...sparkHistory,1);
   ctx.beginPath();
-  ctx.strokeStyle='rgba(0,212,255,.7)';
+  ctx.strokeStyle=colour;
   ctx.lineWidth=1.5;
-  sparkHistory.forEach((v,i)=>{
+  hist.forEach((v,i)=>{
     const x=(i/(SPARK_MAX-1))*W, y=H-(v/max)*H+2;
     if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   });
   ctx.stroke();
   ctx.lineTo(W,H+2);ctx.lineTo(0,H+2);ctx.closePath();
-  ctx.fillStyle='rgba(0,212,255,.06)';ctx.fill();
+  ctx.fillStyle=colour.replace(/[\d.]+\)$/,'0.06)');ctx.fill();
+}
+function drawSpark(bps) {
+  sparkHistory.push(bps);
+  if (sparkHistory.length>SPARK_MAX) sparkHistory.shift();
+  _drawSparkCv('spark-canvas', sparkHistory, 'rgba(0,212,255,.7)');
+}
+function drawSparkTrue(bps) {
+  sparkHistoryTrue.push(bps);
+  if (sparkHistoryTrue.length>SPARK_MAX) sparkHistoryTrue.shift();
+  _drawSparkCv('spark-canvas-true', sparkHistoryTrue, 'rgba(245,158,11,.7)');
 }
 
 // ── QUALITY ──
@@ -2007,7 +2327,6 @@ async function pollNear() {
     if(_ihb)_ihb.textContent=fmtBps(d.bits_per_sec||0);
     if(_ihs)_ihs.textContent=(d.active_sources||[]).length+' / '+_srcRendered.size;
     if(_ihv)_ihv.textContent=(d.vault_pct||0).toFixed(2)+'%';
-    runAdvisor(d);
     // feed vault entropy gate
     if (window._vaultUpdateEntropy) window._vaultUpdateEntropy(vpct, window._negDrbgSeeded || false);
   } catch(e) {}
@@ -2017,9 +2336,23 @@ async function pollNear() {
 async function pollTrue() {
   try {
     const r=await fetch('/api/true',{cache:'no-store'});
-    if (!r.ok) return;
+    if (!r.ok) throw new Error();
     const d=await r.json();
-    if (d.error) return;
+    if (d.error) throw new Error();
+    // Engine online — update badge
+    const badge=$('true-eng-badge'), hint=$('true-eng-hint');
+    const st=(d.status||'LIVE').toUpperCase();
+    if (badge) {
+      badge.textContent=st;
+      const col=st==='LIVE'?'var(--ok)':st==='NO_LASER_SPOT'?'var(--warn)':'var(--muted)';
+      badge.style.color=col; badge.style.borderColor=col;
+    }
+    if (hint) hint.style.display='none';
+    // Show/hide laser-await overlays based on whether photon data is flowing
+    const laserLive = st==='LIVE';
+    [$('lorenz-true-overlay'),$('escher-true-overlay')].forEach(ov=>{
+      if(ov) ov.classList.toggle('hidden', laserLive);
+    });
     $('t-bps').textContent=fmtBps(d.bits_per_sec||0);
     const bal=d.bit_balance||0;
     $('t-bal').textContent=bal.toFixed(4);
@@ -2035,7 +2368,13 @@ async function pollTrue() {
     $('qbar-true').style.width=(q*100)+'%';
     $('qval-true').textContent=`H=${(q*8).toFixed(3)} bit/B`;
     if (d.last_bytes_hex) { injectBytesMathTrue(d.last_bytes_hex); injectBytesEscherTrue(d.last_bytes_hex); }
-  } catch(e) {}
+    drawSparkTrue(d.bits_per_sec||0);
+  } catch(e) {
+    // Engine offline — restore badge
+    const badge=$('true-eng-badge'), hint=$('true-eng-hint');
+    if (badge) { badge.textContent='OFFLINE'; badge.style.color='var(--warn)'; badge.style.borderColor='var(--warn)'; }
+    if (hint) hint.style.display='';
+  }
 }
 
 // Poll both every 2s
@@ -2053,8 +2392,8 @@ const WIZ = {
   ]},
   sdr1: { q:'Is the RTL-SDR dongle physically plugged in?', opts:[{t:'Yes',n:'sdr2'},{t:'No',n:'sdr_plug'}]},
   sdr_plug: { solved:'Plug the RTL-SDR dongle into a USB port, then wait 8 seconds for auto-detection.' },
-  sdr2: { q:'Have you installed the WinUSB driver via Zadig?', opts:[{t:'Yes',n:'sdr3'},{t:'No / Not sure',n:'sdr_zadig'}]},
-  sdr_zadig: { solved:'Download Zadig from zadig.akeo.ie, run as Administrator, plug dongle, select RTL2832U, choose WinUSB, click Install Driver. Then restart the NEAR engine.' },
+  sdr2: { q:'Have you installed the libusbK driver via Zadig?', opts:[{t:'Yes',n:'sdr3'},{t:'No / Not sure',n:'sdr_zadig'}]},
+  sdr_zadig: { solved:'Download Zadig from zadig.akeo.ie, run as Administrator, plug dongle, select RTL2832U, choose libusbK (NOT WinUSB), click Install Driver. Then restart the NEAR engine.' },
   sdr3: { q:'Does Device Manager show the dongle under "Universal Serial Bus devices" (not "Other devices")?', opts:[{t:'Yes',n:'sdr4'},{t:'No / Shows yellow warning',n:'sdr_zadig'}]},
   sdr4: { solved:'Driver OK. Run: python near_entropy.py — check log at C:\\QRNG_Pool\\near_entropy.log for the specific error. If it says ACCESS_DENIED, another program is using the dongle. Close SDR#, HDSDR, or any other SDR software.' },
   cam1: { q:'Does the webcam work in other apps (e.g. Camera app)?', opts:[{t:'Yes',n:'cam2'},{t:'No',n:'cam_hw'}]},
@@ -2063,8 +2402,8 @@ const WIZ = {
   cam_start: { solved:'Run: python webcam_server.py — or use LAUNCH_NEAR.ps1 which starts it automatically. Check that opencv-python is installed: pip install opencv-python' },
   cam3: { solved:'webcam_server.py is running. If the feed still shows offline, try: python webcam_server.py --index 1 (tries different camera index). Check the feed at http://127.0.0.1:8090/snapshot_builtin.jpg' },
   low1: { q:'Which sources show LIVE status?', opts:[{t:'Only CPU/Audio',n:'low2'},{t:'Also webcam',n:'low3'},{t:'None',n:'low4'}]},
-  low2: { solved:'CPU+Audio alone give ~8,000 b/s. Add a webcam source (+3,000 b/s) or RTL-SDR dongle (+5,000 b/s each) for higher rates.' },
-  low3: { solved:'Cam + CPU + Audio is a good baseline (~12,000 b/s). For higher rates, add RTL-SDR dongles. The hardware catalog shows what to buy.' },
+  low2: { solved:'CPU+Audio alone give ~8,000 bits/sec. Add a webcam source (+3,000 bits/sec) or RTL-SDR dongle (+5,000 bits/sec each) for higher rates.' },
+  low3: { solved:'Cam + CPU + Audio is a good baseline (~12,000 bits/sec). For higher rates, add RTL-SDR dongles. The hardware catalog shows what to buy.' },
   low4: { solved:'No sources live — near_entropy.py may not be running. Check port 8766: run python near_entropy.py and watch the log at C:\\QRNG_Pool\\near_entropy.log' },
   svc1: { q:'Which service?', opts:[{t:'near_entropy.py',n:'svc_near'},{t:'entropy_api.py',n:'svc_api'},{t:'webcam_server.py',n:'cam_start'}]},
   svc_near: { solved:'Check: python near_entropy.py — look for import errors. Run: pip install numpy Pillow pyrtlsdr pyrtlsdrlib sounddevice — then retry.' },
@@ -2491,102 +2830,221 @@ function genRange() {
   el.addEventListener('input',()=>{ const v=$(id+'-val');if(v)v.textContent=el.value; });
 });
 
-// ── SYSTEM ADVISOR ──
-const ADV_SYS = `You are SOVEREIGN ADVISOR, an AI assistant embedded in the SOVEREIGN QRNG dashboard.
-Hardware: Windows laptop with built-in webcam. RTL-SDR: USB dongle with libusbK driver via Zadig. RTL-SDR binary: C:\\QRNG_Pool\\rtlsdr_tools\\x64\\rtl_sdr.exe at 96.9 MHz 29dB 256KSPS. Cameras: built-in webcam CAM-A (NEAR), USB webcam CAM-B with laser (TRUE). Services: webcam_server:8090, near_entropy:8766, entropy_api:8888.
-Rules: respond with numbered steps only, 2-4 steps max, be direct and hardware-specific, no preamble.`;
-
-const ADV_STATIC = {
-  rtlsdr_offline: '1. Replug USB cable or try different port\n2. Open Zadig → select RTL2832U → install libusbK driver\n3. Restart near_entropy.py',
-  cam_offline:    '1. Check webcam_server.py is running on port 8090\n2. Replug the USB camera\n3. Run: python webcam_server.py',
-  audio_offline:  '1. Windows Settings → Sound → check microphone is not muted\n2. Settings → Privacy → Microphone → allow access\n3. Restart near_entropy.py',
-  low_entropy:    '1. Check all 4 sources show LIVE in NEAR QUANTUM tab\n2. RTL-SDR gain should be 29 dB — check near_entropy.py settings\n3. Move SDR antenna away from USB 3.0 cables (causes interference)',
-  vault_stall:    '1. Check C:\\QRNG_Pool\\ has free disk space\n2. Verify near_entropy.py is running on port 8766\n3. Check near_offset.txt contains a plain number (not corrupted)',
-};
-
-let _advPrev = {}, _advOllama = false, _vaultStallTicks = 0, _lastOffset = -1;
-
-async function _advCheckOllama() {
+// ── ENTROPY HEALTH MONITOR ──
+async function runHealthTests() {
+  let raw;
   try {
-    const r = await fetch('http://localhost:11434/api/tags', {signal: AbortSignal.timeout(2000)});
-    _advOllama = r.ok;
-  } catch(e) { _advOllama = false; }
-  const tag = $('adv-ai-tag');
-  if (tag) { tag.className = 'adv-ai-tag' + (_advOllama ? '' : ' offline'); tag.title = _advOllama ? 'Ollama AI active — gemma2:2b' : 'Ollama offline — using static advisor'; }
+    const r = await fetch('http://127.0.0.1:8888/api/bytes?n=1024');
+    const j = await r.json();
+    raw = new Uint8Array(j.hex.match(/.{2}/g).map(h => parseInt(h, 16)));
+  } catch(e) {
+    const badge = $('hlth-badge');
+    if (badge) { badge.textContent = 'OFFLINE'; badge.style.color = 'var(--muted)'; }
+    return;
+  }
+  const N = raw.length;
+
+  // Test 1: Bit Balance — fraction of 1-bits (ideal: 0.50)
+  let ones = 0;
+  for (let i = 0; i < N; i++) { let b = raw[i]; while(b){ ones += b&1; b>>=1; } }
+  const bitBal = ones / (N * 8);
+  const bitBalPct = (bitBal * 100).toFixed(2) + '%';
+  const bitBalOk = bitBal >= 0.48 && bitBal <= 0.52;
+  const bitBalWrn = bitBal >= 0.45 && bitBal <= 0.55;
+  const bitBalPct100 = Math.max(0, 100 - Math.abs(bitBal - 0.5) * 1000);
+
+  // Test 2: Shannon Entropy per byte (ideal: ~8.0 bits/byte)
+  const freq = new Array(256).fill(0);
+  for (let i = 0; i < N; i++) freq[raw[i]]++;
+  let H = 0;
+  for (let i = 0; i < 256; i++) { if(freq[i]>0){const p=freq[i]/N; H -= p*Math.log2(p);} }
+  const shannonOk = H >= 7.5, shannonWrn = H >= 7.0;
+  const shannonPct = (H / 8) * 100;
+
+  // Test 3: Chi-Squared byte uniformity (255 DOF; warn >293, fail >340)
+  const exp = N / 256;
+  let chi2 = 0;
+  for (let i = 0; i < 256; i++) chi2 += Math.pow(freq[i] - exp, 2) / exp;
+  const chi2Ok = chi2 < 293, chi2Wrn = chi2 < 340;
+  const chi2Pct = Math.max(0, 100 - (chi2 / 3.4));
+
+  // Test 4: Longest run of identical bits (8192 bits; warn >20, fail >26)
+  let maxRun = 0, curRun = 1, prevBit = -1;
+  for (let i = 0; i < N; i++) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const b = (raw[i] >> bit) & 1;
+      if (b === prevBit) { curRun++; if(curRun > maxRun) maxRun = curRun; } else curRun = 1;
+      prevBit = b;
+    }
+  }
+  const runOk = maxRun <= 20, runWrn = maxRun <= 26;
+  const runPct = Math.max(0, 100 - Math.max(0, maxRun - 13) * 6.5);
+
+  const tests = [
+    { label:'BIT BALANCE',     value: bitBalPct,            pct: bitBalPct100, ok: bitBalOk,  wrn: bitBalWrn  },
+    { label:'SHANNON ENTROPY', value: H.toFixed(3)+' b/B',  pct: shannonPct,   ok: shannonOk, wrn: shannonWrn },
+    { label:'CHI-SQUARED',     value: 'x²='+chi2.toFixed(0),pct: chi2Pct,      ok: chi2Ok,    wrn: chi2Wrn    },
+    { label:'LONGEST RUN',     value: maxRun+' bits',        pct: runPct,       ok: runOk,     wrn: runWrn     },
+  ];
+
+  const anyFail = tests.some(t => !t.wrn);
+  const anyWarn = tests.some(t => !t.ok);
+  const dot = $('hlth-dot'), badge = $('hlth-badge'), alert = $('health-alert'), sample = $('hlth-sample');
+
+  if (sample) sample.textContent = N + ' bytes sampled';
+  if (anyFail) {
+    if (dot) dot.className = 'health-dot fail';
+    if (badge) { badge.textContent = 'FAULT DETECTED'; badge.style.color = 'var(--danger)'; }
+    if (alert) { alert.style.display = ''; alert.textContent = 'ALERT: Entropy pool failing statistical tests — vault data may be biased or exhausted. Check sources in NEAR QUANTUM tab.'; }
+  } else if (anyWarn) {
+    if (dot) dot.className = 'health-dot warn';
+    if (badge) { badge.textContent = 'WARNING'; badge.style.color = 'var(--warn)'; }
+    if (alert) alert.style.display = 'none';
+  } else {
+    if (dot) dot.className = 'health-dot pass';
+    if (badge) { badge.textContent = 'ALL PASS'; badge.style.color = 'var(--ok)'; }
+    if (alert) alert.style.display = 'none';
+  }
+
+  const container = $('health-tests');
+  if (!container) return;
+  container.innerHTML = '';
+  tests.forEach(t => {
+    const status = t.ok ? 'PASS' : t.wrn ? 'WARN' : 'FAIL';
+    const col = t.ok ? 'var(--ok)' : t.wrn ? 'var(--warn)' : 'var(--danger)';
+    const row = document.createElement('div');
+    row.className = 'health-test';
+    row.innerHTML = `<span class="health-lbl">${t.label}</span><span class="health-val">${t.value}</span><div class="health-bar"><div class="health-bar-fill" style="width:${Math.min(100,Math.max(0,t.pct)).toFixed(1)}%;background:${col}"></div></div><span class="health-status" style="color:${col}">${status}</span>`;
+    container.appendChild(row);
+  });
 }
 
-async function _advStream(prompt, textEl) {
-  textEl.textContent = '';
+runHealthTests();
+setInterval(runHealthTests, 6000);
+
+// ── ENTROPY HEALTH MONITOR — TRUE QUANTUM ──
+async function runHealthTestsTrue() {
+  // First check if the TRUE engine is online and has data
+  let raw;
   try {
-    const r = await fetch('http://localhost:11434/api/chat', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'gemma2:2b', messages:[{role:'system',content:ADV_SYS},{role:'user',content:prompt}], stream:true}),
-      signal: AbortSignal.timeout(30000)
-    });
-    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf='';
-    while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';for(const l of lines){if(!l.trim())continue;try{const j=JSON.parse(l);if(j.message?.content){textEl.textContent+=j.message.content;textEl.parentElement.scrollTop=textEl.parentElement.scrollHeight;}}catch(e){}}}
-  } catch(e) {}
+    const r = await fetch('/api/true', {cache:'no-store'});
+    const d = await r.json();
+    if (!d || d.status === 'OFFLINE' || (d.byte_count !== undefined && d.byte_count < 1000)) {
+      const badge = $('hlth-badge-true');
+      const dot = $('hlth-dot-true');
+      const container = $('health-tests-true');
+      if (badge) { badge.textContent = 'OFFLINE'; badge.style.color = 'var(--muted)'; }
+      if (dot) dot.className = 'health-dot';
+      if (container) {
+        container.innerHTML = '';
+        ['BIT BALANCE','SHANNON ENTROPY','CHI-SQUARED','LONGEST RUN'].forEach(lbl => {
+          const row = document.createElement('div');
+          row.className = 'health-test';
+          row.innerHTML = `<span class="health-lbl">${lbl}</span><span class="health-val" style="color:var(--muted)">—</span><div class="health-bar"></div><span class="health-status" style="color:var(--muted)">—</span>`;
+          container.appendChild(row);
+        });
+      }
+      const sample = $('hlth-sample-true');
+      if (sample) sample.textContent = 'TRUE engine offline';
+      return;
+    }
+  } catch(e) {
+    const badge = $('hlth-badge-true');
+    if (badge) { badge.textContent = 'OFFLINE'; badge.style.color = 'var(--muted)'; }
+    return;
+  }
+
+  // Fetch entropy bytes for testing
+  try {
+    const r = await fetch('http://127.0.0.1:8888/api/bytes?n=1024');
+    const j = await r.json();
+    raw = new Uint8Array(j.hex.match(/.{2}/g).map(h => parseInt(h, 16)));
+  } catch(e) {
+    const badge = $('hlth-badge-true');
+    if (badge) { badge.textContent = 'OFFLINE'; badge.style.color = 'var(--muted)'; }
+    return;
+  }
+  const N = raw.length;
+
+  // Test 1: Bit Balance
+  let ones = 0;
+  for (let i = 0; i < N; i++) { let b = raw[i]; while(b){ ones += b&1; b>>=1; } }
+  const bitBal = ones / (N * 8);
+  const bitBalPct = (bitBal * 100).toFixed(2) + '%';
+  const bitBalOk = bitBal >= 0.48 && bitBal <= 0.52;
+  const bitBalWrn = bitBal >= 0.45 && bitBal <= 0.55;
+  const bitBalPct100 = Math.max(0, 100 - Math.abs(bitBal - 0.5) * 1000);
+
+  // Test 2: Shannon Entropy
+  const freq = new Array(256).fill(0);
+  for (let i = 0; i < N; i++) freq[raw[i]]++;
+  let H = 0;
+  for (let i = 0; i < 256; i++) { if(freq[i]>0){const p=freq[i]/N; H -= p*Math.log2(p);} }
+  const shannonOk = H >= 7.5, shannonWrn = H >= 7.0;
+  const shannonPct = (H / 8) * 100;
+
+  // Test 3: Chi-Squared
+  const exp = N / 256;
+  let chi2 = 0;
+  for (let i = 0; i < 256; i++) chi2 += Math.pow(freq[i] - exp, 2) / exp;
+  const chi2Ok = chi2 < 293, chi2Wrn = chi2 < 340;
+  const chi2Pct = Math.max(0, 100 - (chi2 / 3.4));
+
+  // Test 4: Longest Run
+  let maxRun = 0, curRun = 1, prevBit = -1;
+  for (let i = 0; i < N; i++) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const b = (raw[i] >> bit) & 1;
+      if (b === prevBit) { curRun++; if(curRun > maxRun) maxRun = curRun; } else curRun = 1;
+      prevBit = b;
+    }
+  }
+  const runOk = maxRun <= 20, runWrn = maxRun <= 26;
+  const runPct = Math.max(0, 100 - Math.max(0, maxRun - 13) * 6.5);
+
+  const tests = [
+    { label:'BIT BALANCE',     value: bitBalPct,            pct: bitBalPct100, ok: bitBalOk,  wrn: bitBalWrn  },
+    { label:'SHANNON ENTROPY', value: H.toFixed(3)+' b/B',  pct: shannonPct,   ok: shannonOk, wrn: shannonWrn },
+    { label:'CHI-SQUARED',     value: 'x²='+chi2.toFixed(0),pct: chi2Pct,      ok: chi2Ok,    wrn: chi2Wrn    },
+    { label:'LONGEST RUN',     value: maxRun+' bits',        pct: runPct,       ok: runOk,     wrn: runWrn     },
+  ];
+
+  const anyFail = tests.some(t => !t.wrn);
+  const anyWarn = tests.some(t => !t.ok);
+  const dot = $('hlth-dot-true'), badge = $('hlth-badge-true'), alert = $('health-alert-true'), sample = $('hlth-sample-true');
+
+  if (sample) sample.textContent = N + ' bytes sampled';
+  if (anyFail) {
+    if (dot) dot.className = 'health-dot fail';
+    if (badge) { badge.textContent = 'FAULT DETECTED'; badge.style.color = 'var(--danger)'; }
+    if (alert) { alert.style.display = ''; alert.textContent = 'ALERT: TRUE entropy pool failing statistical tests — vault data may be biased or exhausted. Check laser source.'; }
+  } else if (anyWarn) {
+    if (dot) dot.className = 'health-dot warn';
+    if (badge) { badge.textContent = 'WARNING'; badge.style.color = 'var(--warn)'; }
+    if (alert) alert.style.display = 'none';
+  } else {
+    if (dot) dot.className = 'health-dot pass';
+    if (badge) { badge.textContent = 'ALL PASS'; badge.style.color = 'var(--true)'; }
+    if (alert) alert.style.display = 'none';
+  }
+
+  const container = $('health-tests-true');
+  if (!container) return;
+  container.innerHTML = '';
+  tests.forEach(t => {
+    const status = t.ok ? 'PASS' : t.wrn ? 'WARN' : 'FAIL';
+    const col = t.ok ? 'var(--true)' : t.wrn ? 'var(--warn)' : 'var(--danger)';
+    const row = document.createElement('div');
+    row.className = 'health-test';
+    row.innerHTML = `<span class="health-lbl">${t.label}</span><span class="health-val">${t.value}</span><div class="health-bar"><div class="health-bar-fill" style="width:${Math.min(100,Math.max(0,t.pct)).toFixed(1)}%;background:${col}"></div></div><span class="health-status" style="color:${col}">${status}</span>`;
+    container.appendChild(row);
+  });
 }
 
-function _advShowCard(evtType, title, prompt) {
-  const body=$('adv-body');
-  if(body.querySelector('[data-evt="'+evtType+'"]'))return;
-  const card=document.createElement('div');
-  card.className='adv-card warn'; card.dataset.evt=evtType;
-  const textEl=document.createElement('div'); textEl.className='adv-text'; textEl.textContent='...';
-  const titleEl=document.createElement('div'); titleEl.className='adv-card-title'; titleEl.textContent=title;
-  const btn=document.createElement('button'); btn.className='adv-dismiss'; btn.textContent='✕';
-  btn.onclick=()=>{card.remove();_advUpdateState();};
-  card.appendChild(titleEl); card.appendChild(textEl); card.appendChild(btn);
-  body.appendChild(card);
-  if(_advOllama) _advStream(prompt, textEl);
-  else textEl.textContent = ADV_STATIC[evtType]||'Check connections and service logs.';
-  _advUpdateState();
-}
+runHealthTestsTrue();
+setInterval(runHealthTestsTrue, 7000);
 
-function _advRemoveCard(evtType) {
-  const card=$('adv-body').querySelector('[data-evt="'+evtType+'"]');
-  if(card)card.remove(); _advUpdateState();
-}
-
-function _advUpdateState() {
-  const warns=$('adv-body').querySelectorAll('.adv-card.warn').length;
-  const dot=$('adv-dot'),badge=$('adv-badge');
-  if(!dot)return;
-  if(warns>0){dot.className='adv-indicator warn';badge.textContent=warns+' ISSUE'+(warns>1?'S':'');}
-  else{dot.className='adv-indicator ok';badge.textContent='NOMINAL';}
-}
-
-function runAdvisor(d) {
-  if(!d)return;
-  const src=d.sources||{};
-  const sdr0=src.sdr0?.status==='LIVE', cam=src.cam?.status==='LIVE', audio=src.audio?.status==='LIVE';
-  const bps=d.bits_per_sec||0, offset=d.vault_offset||0;
-
-  if(!sdr0&&_advPrev.sdr0!==false) _advShowCard('rtlsdr_offline','RTL-SDR OFFLINE','RTL-SDR [0] has gone offline. libusbK driver via Zadig. Most likely causes and fix steps?');
-  else if(sdr0&&_advPrev.sdr0===false) _advRemoveCard('rtlsdr_offline');
-
-  if(!cam&&_advPrev.cam!==false) _advShowCard('cam_offline','CAMERA OFFLINE','Built-in webcam CAM-A went offline in webcam_server on port 8090. What should user check?');
-  else if(cam&&_advPrev.cam===false) _advRemoveCard('cam_offline');
-
-  if(!audio&&_advPrev.audio!==false) _advShowCard('audio_offline','AUDIO OFFLINE','Microphone audio source went offline in near_entropy.py on Windows 10. Fix steps?');
-  else if(audio&&_advPrev.audio===false) _advRemoveCard('audio_offline');
-
-  if(bps>0&&bps<2000&&(_advPrev.bps||0)>=2000) _advShowCard('low_entropy','LOW ENTROPY RATE','Entropy dropped to '+Math.round(bps)+' bps. Sources: cam='+Math.round(src.cam?.bps_raw||0)+' sdr0='+Math.round(src.sdr0?.bps_raw||0)+' cpu='+Math.round(src.cpu?.bps_raw||0)+' audio='+Math.round(src.audio?.bps_raw||0)+'. Causes and fix?');
-  else if(bps>=2000&&(_advPrev.bps||0)<2000&&(_advPrev.bps||0)>0) _advRemoveCard('low_entropy');
-
-  if(offset===_lastOffset&&bps>500)_vaultStallTicks++;else _vaultStallTicks=0;
-  _lastOffset=offset;
-  if(_vaultStallTicks>=6&&!$('adv-body').querySelector('[data-evt="vault_stall"]')) _advShowCard('vault_stall','VAULT NOT FILLING','Vault offset unchanged for 60s despite active sources. Why might near_entropy.py fail to write to C:\\QRNG_Pool\\near_vault.bin?');
-  else if(_vaultStallTicks<3) _advRemoveCard('vault_stall');
-
-  _advPrev={sdr0,cam,audio,bps};
-}
-
-setTimeout(_advCheckOllama, 2500);
-setInterval(_advCheckOllama, 120000);
-
-// ── TRIPLE LOCK PURGE ──
+// ── TRIPLE LOCK PURGE — NEAR ──
 function checkPurgeLocks() {
   const all = $('lock1').checked && $('lock2').checked && $('lock3').checked;
   $('purge-btn').disabled = !all;
@@ -2603,111 +3061,121 @@ async function doPurge() {
   btn.disabled = true;
 }
 
+// ── TRIPLE LOCK PURGE — TRUE ──
+function checkTruePurgeLocks() {
+  const all = $('tlock1').checked && $('tlock2').checked && $('tlock3').checked;
+  $('purge-true-btn').disabled = !all;
+}
+async function doPurgeTrue() {
+  const btn = $('purge-true-btn');
+  if (btn.disabled) return;
+  const orig = btn.textContent;
+  btn.textContent = 'PURGING...';
+  btn.disabled = true;
+  try { await fetch('/api/purge_true', {method:'POST'}); } catch(e) {}
+  ['tlock1','tlock2','tlock3'].forEach(id => { $(id).checked = false; });
+  btn.textContent = orig;
+  btn.disabled = true;
+}
+
 // ── INTEL TAB: VISUAL HIERARCHY + DUAL CODING ──
 // ══════════════════════════════════════════════════════════
 //  NEGENTROPY TAB — DRBG + Recamán + Byte Heatmap
 // ══════════════════════════════════════════════════════════
 
-// ── Recamán Sequence Animator ──
+// ── Recamán Sequence Animator (DPR-aware, RAF cursor) ──
 (function() {
-  const NEG = '#818cf8';
-  const ABOVE_COL = 'rgba(129,140,248,0.55)';
-  const BELOW_COL = 'rgba(192,132,252,0.40)';
   let seq = [0], visited = new Set([0]);
-  let animFrame = 0, maxN = 0;
-  let cvR, ctxR;
+  let maxN = 0, cvR, ctxR, _ct = 0;
 
   function nextRecaman() {
-    const n = seq.length;
-    const prev = seq[n - 1];
-    const candidate = prev - n;
-    if (candidate > 0 && !visited.has(candidate)) {
-      seq.push(candidate);
-      visited.add(candidate);
-    } else {
-      seq.push(prev + n);
-      visited.add(prev + n);
-    }
+    const n = seq.length, prev = seq[n - 1], cand = prev - n;
+    if (cand > 0 && !visited.has(cand)) { seq.push(cand); visited.add(cand); }
+    else { seq.push(prev + n); visited.add(prev + n); }
   }
 
   function drawRecaman() {
     if (!cvR || !ctxR) return;
-    const W = cvR.width, H = cvR.height;
+    const dpr = window.devicePixelRatio || 1;
+    const wrap = cvR.parentElement;
+    const cssW = wrap.clientWidth || 400, cssH = wrap.clientHeight || 160;
+    if (cvR.width !== Math.round(cssW*dpr) || cvR.height !== Math.round(cssH*dpr)) {
+      cvR.width = Math.round(cssW*dpr); cvR.height = Math.round(cssH*dpr);
+      ctxR.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    const W = cssW, H = cssH;
     ctxR.clearRect(0, 0, W, H);
     if (seq.length < 3) return;
+
     const visible = Math.min(seq.length, 60);
-    const mx = Math.max(...seq.slice(0, visible));
-    const mn = 0;
-    const range = mx - mn || 1;
-    const scaleX = W / (visible + 1);
-
-    const mapX = i => (i + 0.5) * scaleX;
-    const mapV = v => ((v - mn) / range) * (H - 20) + 10;
-
-    // draw baseline
-    ctxR.beginPath();
-    ctxR.strokeStyle = 'rgba(129,140,248,0.15)';
-    ctxR.lineWidth = 1;
+    const mx = Math.max(...seq.slice(0, visible)) || 1;
     const baseY = H * 0.62;
-    ctxR.moveTo(0, baseY); ctxR.lineTo(W, baseY);
-    ctxR.stroke();
+    const scaleX = W / (visible + 1);
+    const mapX = i => (i + 0.5) * scaleX;
+    const mapY = v => baseY - (v / mx) * (H * 0.50);
 
-    // draw arcs
+    // Subtle grid
+    ctxR.strokeStyle = 'rgba(129,140,248,0.06)'; ctxR.lineWidth = 0.5;
+    for (let g = 1; g < 8; g++) { ctxR.beginPath(); ctxR.moveTo(g*W/8,0); ctxR.lineTo(g*W/8,H); ctxR.stroke(); }
+
+    // Baseline
+    ctxR.beginPath(); ctxR.strokeStyle='rgba(129,140,248,0.18)'; ctxR.lineWidth=1;
+    ctxR.moveTo(0,baseY); ctxR.lineTo(W,baseY); ctxR.stroke();
+
+    // Arcs: older = dim, newer = bright + thick
     for (let i = 0; i < visible - 1; i++) {
-      const x1 = mapX(i), x2 = mapX(i + 1);
-      const v1 = seq[i], v2 = seq[i + 1];
-      const cx = (x1 + x2) / 2;
-      const rx = Math.abs(x2 - x1) / 2;
-      const y1 = baseY - ((v1 / range) * (H * 0.45));
-      const y2 = baseY - ((v2 / range) * (H * 0.45));
-      const cy = (y1 + y2) / 2;
-      const ry = Math.max(Math.abs(y2 - y1) / 2, rx * 0.15);
-      const above = v2 > v1;
-
-      const alpha = 0.2 + (i / visible) * 0.75;
+      const age = i / visible;
+      const x1=mapX(i), x2=mapX(i+1), v1=seq[i], v2=seq[i+1];
+      const cx=(x1+x2)/2, rx=Math.abs(x2-x1)/2;
+      const y1=mapY(v1), y2=mapY(v2), cy=(y1+y2)/2;
+      const ry=Math.max(Math.abs(y2-y1)/2, rx*0.15);
+      const alpha=(0.04+age*0.88).toFixed(2);
       ctxR.beginPath();
-      ctxR.strokeStyle = above
-        ? `rgba(129,140,248,${alpha})`
-        : `rgba(192,132,252,${alpha})`;
-      ctxR.lineWidth = 1 + (i / visible) * 1.5;
-      ctxR.ellipse(cx, cy, rx || 4, ry || 4, 0, 0, Math.PI * 2);
+      ctxR.strokeStyle = v2>v1 ? `rgba(129,140,248,${alpha})` : `rgba(192,132,252,${alpha})`;
+      ctxR.lineWidth = 0.5 + age*2;
+      ctxR.ellipse(cx,cy,rx||3,ry||3,0,0,Math.PI*2);
       ctxR.stroke();
-
-      // dot at each term
-      if (i === visible - 2) {
-        ctxR.beginPath();
-        ctxR.fillStyle = NEG;
-        ctxR.arc(x2, baseY - ((v2 / range) * (H * 0.45)), 3, 0, Math.PI * 2);
-        ctxR.fill();
-      }
     }
 
-    // counter label
-    ctxR.fillStyle = 'rgba(129,140,248,0.6)';
-    ctxR.font = '10px Courier New';
-    ctxR.textAlign = 'right';
-    ctxR.fillText('n=' + (seq.length - 1), W - 6, H - 5);
+    // Glowing animated cursor at latest term
+    const lx=mapX(visible-1), ly=mapY(seq[visible-1]);
+    _ct += 0.05;
+    const pulse = 0.5+0.5*Math.sin(_ct);
+    const gr = 3+pulse*3;
+
+    ctxR.strokeStyle=`rgba(129,140,248,${(0.15+pulse*0.25).toFixed(2)})`;
+    ctxR.lineWidth=0.5; ctxR.setLineDash([2,4]);
+    ctxR.beginPath(); ctxR.moveTo(lx,0); ctxR.lineTo(lx,H); ctxR.stroke();
+    ctxR.beginPath(); ctxR.moveTo(0,ly); ctxR.lineTo(W,ly); ctxR.stroke();
+    ctxR.setLineDash([]);
+
+    ctxR.beginPath();
+    ctxR.strokeStyle=`rgba(129,140,248,${(0.25+pulse*0.35).toFixed(2)})`;
+    ctxR.lineWidth=1; ctxR.arc(lx,ly,gr*2.8,0,Math.PI*2); ctxR.stroke();
+
+    ctxR.shadowColor='#818cf8'; ctxR.shadowBlur=gr*4;
+    ctxR.beginPath(); ctxR.fillStyle='#818cf8';
+    ctxR.arc(lx,ly,gr*0.75,0,Math.PI*2); ctxR.fill();
+    ctxR.shadowBlur=0;
+
+    ctxR.fillStyle='rgba(129,140,248,0.5)';
+    ctxR.font="9px 'Courier New'"; ctxR.textAlign='right';
+    ctxR.fillText('n='+(seq.length-1+maxN), W-6, H-5);
   }
 
-  function recamanTick() {
-    if (!cvR) {
-      cvR = document.getElementById('recaman-canvas');
-      if (!cvR) return;
-      ctxR = cvR.getContext('2d');
-    }
-    const wrap = cvR.parentElement;
-    if (cvR.width !== wrap.clientWidth || cvR.height !== wrap.clientHeight) {
-      cvR.width = wrap.clientWidth || 400;
-      cvR.height = wrap.clientHeight || 160;
-    }
+  // Advance sequence on timer
+  setInterval(() => {
+    if (!cvR) { cvR=document.getElementById('recaman-canvas'); if(!cvR)return; ctxR=cvR.getContext('2d'); }
+    if (cvR.offsetParent===null) return;
     nextRecaman();
-    if (seq.length > 200) { seq = seq.slice(seq.length - 100); }
-    const nEl = document.getElementById('neg-seq-n');
-    if (nEl) nEl.textContent = 'n=' + (seq.length - 1 + maxN);
-    maxN += 1;
-    drawRecaman();
-  }
-  setInterval(recamanTick, 180);
+    if (seq.length>200) seq=seq.slice(seq.length-100);
+    maxN++;
+    const nEl=document.getElementById('neg-seq-n');
+    if (nEl) nEl.textContent='n='+(seq.length-1+maxN);
+  }, 200);
+
+  // RAF loop for smooth cursor animation — skips draw when tab is hidden
+  (function raf(){ if(!document.hidden&&cvR&&cvR.offsetParent!==null) drawRecaman(); requestAnimationFrame(raf); })();
 })();
 
 // ── Seeding Chain Flow Diagram ──
@@ -2731,17 +3199,17 @@ async function doPurge() {
 
     const dpr = window.devicePixelRatio || 1;
     const W = cvF.clientWidth  || 400;
-    const H = cvF.clientHeight || 74;
+    const H = cvF.clientHeight || 96;
     const pW = Math.round(W * dpr), pH = Math.round(H * dpr);
     if (cvF.width !== pW || cvF.height !== pH) {
       cvF.width = pW; cvF.height = pH;
-      ctxF.scale(dpr, dpr);
+      ctxF.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     ctxF.clearRect(0, 0, W, H);
 
     const bW = Math.min(118, Math.floor(W * 0.26));
     const gap = Math.max(30, Math.floor((W - bW * 3) / 2));
-    const bH = 40;
+    const bH = 48;
     const sx = Math.floor((W - (bW * 3 + gap * 2)) / 2);
     const sy = Math.floor((H - bH) / 2);
     const xPos = [sx, sx + bW + gap, sx + (bW + gap) * 2];
@@ -2770,7 +3238,7 @@ async function doPurge() {
       ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.7 : 0.22})`;
       ctxF.font = "10px 'Courier New'";
       ctxF.textAlign = 'center';
-      ctxF.fillText(ARROWS[i], (x1 + x2) / 2, my - 13);
+      ctxF.fillText(ARROWS[i], (x1 + x2) / 2, sy - 8);
 
       if (active) {
         for (let d = 0; d < 4; d++) {
@@ -2809,7 +3277,7 @@ async function doPurge() {
       ctxF.textAlign = 'center';
       ctxF.fillText(box.label, x + bW / 2, sy + bH / 2 - 2);
       ctxF.fillStyle = `rgba(${r},${g},${b},${active ? 0.58 : 0.22})`;
-      ctxF.font = "10px 'Courier New'";
+      ctxF.font = "8.5px 'Courier New'";
       ctxF.fillText(box.sub, x + bW / 2, sy + bH / 2 + 13);
     });
   }
@@ -2818,54 +3286,152 @@ async function doPurge() {
   setInterval(drawFlow, 50);
 })();
 
-// ── DRBG Byte Heatmap ──
+// ── DRBG Oscilloscope ──
 (function() {
-  let cvB, ctxB, heatData = new Uint8Array(256);
+  const BUF_SIZE = 2048;
+  let cvB, ctxB, dpr = 1;
+  let ringBuf = new Uint8Array(BUF_SIZE);
+  let ringHead = 0, ringCount = 0;
+  let scanPos = 0;      // floating scan position (pixels)
+  let scanDir = 1;
+  let _lastHex = '';
+  let _raf = null;
 
-  function drawHeat(bytes) {
+  function push(bytes) {
+    if (!bytes || !bytes.length) return;
+    for (let i = 0; i < bytes.length; i++) {
+      ringBuf[ringHead % BUF_SIZE] = bytes[i];
+      ringHead++;
+      if (ringCount < BUF_SIZE) ringCount++;
+    }
+    _lastHex = Array.from(bytes.slice(-1)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function draw() {
     if (!cvB) {
       cvB = document.getElementById('neg-byte-canvas');
-      if (!cvB) return;
+      if (!cvB) { _raf = requestAnimationFrame(draw); return; }
       ctxB = cvB.getContext('2d');
     }
     const wrap = cvB.parentElement;
-    cvB.width = wrap.clientWidth || 400;
-    cvB.height = Math.max(30, (wrap.clientHeight || 120) - 24);
+    const W0 = wrap.clientWidth || 400, H0 = Math.max(40, wrap.clientHeight || 130);
+    dpr = window.devicePixelRatio || 1;
+    if (cvB.width !== Math.round(W0 * dpr) || cvB.height !== Math.round(H0 * dpr)) {
+      cvB.width  = Math.round(W0 * dpr);
+      cvB.height = Math.round(H0 * dpr);
+      cvB.style.width  = W0 + 'px';
+      cvB.style.height = H0 + 'px';
+    }
     const W = cvB.width, H = cvB.height;
-    if (!bytes || !bytes.length) return;
-    for (let i = 0; i < bytes.length; i++) heatData[bytes[i]]++;
-    const mx = Math.max(...heatData, 1);
-    const bw = W / 256;
+    ctxB.setTransform(1, 0, 0, 1, 0, 0);
     ctxB.clearRect(0, 0, W, H);
 
-    // Bars
-    for (let i = 0; i < 256; i++) {
-      const frac = heatData[i] / mx;
-      const h = frac * H;
-      const alpha = 0.15 + frac * 0.85;
-      ctxB.fillStyle = `rgba(129,140,248,${alpha.toFixed(2)})`;
-      ctxB.fillRect(i * bw, H - h, bw + 0.5, h);
+    // Background
+    ctxB.fillStyle = 'rgba(10,10,20,0.92)';
+    ctxB.fillRect(0, 0, W, H);
+
+    // Grid lines
+    ctxB.strokeStyle = 'rgba(129,140,248,0.07)';
+    ctxB.lineWidth = 1;
+    for (let gy = 0; gy <= 4; gy++) {
+      const y = Math.round(H * gy / 4) + 0.5;
+      ctxB.beginPath(); ctxB.moveTo(0, y); ctxB.lineTo(W, y); ctxB.stroke();
+    }
+    for (let gx = 0; gx <= 8; gx++) {
+      const x = Math.round(W * gx / 8) + 0.5;
+      ctxB.beginPath(); ctxB.moveTo(x, 0); ctxB.lineTo(x, H); ctxB.stroke();
     }
 
-    // Ideal flat reference line (average count = what a uniform distribution would give)
-    const total = heatData.reduce((a, v) => a + v, 0);
-    if (total > 256) {
-      const avg = total / 256;
-      const idealY = H - (avg / mx) * H;
-      ctxB.beginPath();
-      ctxB.strokeStyle = 'rgba(34,197,94,0.6)';
-      ctxB.setLineDash([4, 4]);
-      ctxB.lineWidth = 1;
-      ctxB.moveTo(0, idealY); ctxB.lineTo(W, idealY);
-      ctxB.stroke();
-      ctxB.setLineDash([]);
-      ctxB.fillStyle = 'rgba(34,197,94,0.55)';
-      ctxB.font = "7px 'Courier New'";
-      ctxB.textAlign = 'left';
-      ctxB.fillText('IDEAL', 4, Math.max(idealY - 3, 9));
+    if (ringCount < 2) {
+      // Waiting state
+      ctxB.fillStyle = 'rgba(129,140,248,0.28)';
+      ctxB.font = `${Math.round(9 * dpr)}px 'Courier New'`;
+      ctxB.textAlign = 'center';
+      ctxB.fillText('WAITING FOR DRBG OUTPUT', W / 2, H / 2);
+      _raf = requestAnimationFrame(draw);
+      return;
     }
+
+    // Build display slice — most recent ringCount samples mapped to W pixels
+    const count = Math.min(ringCount, BUF_SIZE);
+    const start = (ringHead - count + BUF_SIZE * 8) % BUF_SIZE;
+
+    // Gradient fill under waveform
+    const grad = ctxB.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0,   'rgba(99,102,241,0.18)');
+    grad.addColorStop(0.5, 'rgba(99,102,241,0.06)');
+    grad.addColorStop(1,   'rgba(99,102,241,0)');
+
+    ctxB.beginPath();
+    for (let px = 0; px < W; px++) {
+      const idx = Math.floor(px / W * count);
+      const val = ringBuf[(start + idx) % BUF_SIZE];
+      const y = H - (val / 255) * (H - 4) - 2;
+      if (px === 0) ctxB.moveTo(px, y); else ctxB.lineTo(px, y);
+    }
+    // Close path to bottom for gradient fill
+    const lastVal = ringBuf[(start + count - 1) % BUF_SIZE];
+    ctxB.lineTo(W, H - (lastVal / 255) * (H - 4) - 2);
+    ctxB.lineTo(W, H); ctxB.lineTo(0, H);
+    ctxB.closePath();
+    ctxB.fillStyle = grad;
+    ctxB.fill();
+
+    // Waveform line
+    ctxB.beginPath();
+    ctxB.strokeStyle = 'rgba(129,140,248,0.9)';
+    ctxB.lineWidth = 1.5;
+    for (let px = 0; px < W; px++) {
+      const idx = Math.floor(px / W * count);
+      const val = ringBuf[(start + idx) % BUF_SIZE];
+      const y = H - (val / 255) * (H - 4) - 2;
+      if (px === 0) ctxB.moveTo(px, y); else ctxB.lineTo(px, y);
+    }
+    ctxB.stroke();
+
+    // Scanning dot — advances across screen, bounces at edges
+    scanPos += scanDir * (0.8 + ringCount * 0.0005);
+    if (scanPos >= W - 1) { scanPos = W - 1; scanDir = -1; }
+    if (scanPos <= 0)     { scanPos = 0;     scanDir =  1; }
+
+    const scanX = Math.round(scanPos);
+    const scanIdx = Math.floor(scanPos / W * count);
+    const scanVal = ringBuf[(start + scanIdx) % BUF_SIZE];
+    const scanY = H - (scanVal / 255) * (H - 4) - 2;
+
+    // Vertical scan line
+    ctxB.strokeStyle = 'rgba(167,139,250,0.25)';
+    ctxB.lineWidth = 1;
+    ctxB.beginPath(); ctxB.moveTo(scanX, 0); ctxB.lineTo(scanX, H); ctxB.stroke();
+
+    // Dot glow
+    const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.004);
+    ctxB.shadowColor = '#a78bfa';
+    ctxB.shadowBlur  = Math.round(8 * pulse * dpr);
+    ctxB.beginPath();
+    ctxB.arc(scanX, scanY, 3 * dpr, 0, Math.PI * 2);
+    ctxB.fillStyle = '#a78bfa';
+    ctxB.fill();
+    ctxB.shadowBlur = 0;
+
+    // Hex readout next to dot
+    if (_lastHex) {
+      const label = '0x' + (scanVal).toString(16).padStart(2, '0').toUpperCase();
+      const tx = scanX > W * 0.75 ? scanX - 6 : scanX + 8;
+      ctxB.font = `${Math.round(8 * dpr)}px 'Courier New'`;
+      ctxB.textAlign = scanX > W * 0.75 ? 'right' : 'left';
+      ctxB.fillStyle = 'rgba(167,139,250,0.85)';
+      ctxB.fillText(label, tx, Math.max(scanY - 5, 10));
+    }
+
+    _raf = requestAnimationFrame(draw);
   }
-  window._negHeatUpdate = drawHeat;
+
+  function pushBytes(bytes) { push(bytes); }
+  window._negHeatUpdate = pushBytes;
+
+  // Kick off RAF loop
+  _raf = requestAnimationFrame(draw);
 })();
 
 // ── NEG Mode ──
@@ -2985,6 +3551,20 @@ async function pollNeg() {
       if (badge) { badge.textContent = 'LIVE'; badge.style.borderColor = 'var(--neg)'; badge.style.color = 'var(--neg)'; }
       if (seededEl) { seededEl.textContent = '✓ QUANTUM SEEDED'; seededEl.style.color = 'var(--ok)'; }
       if (reseedBtn) reseedBtn.disabled = false;
+      // Auto-feed oscilloscope — silent 64-byte fetch every poll cycle
+      if (window._negHeatUpdate) {
+        try {
+          const vr = await fetch('http://127.0.0.1:8767/api/neg/bytes?n=64', {cache:'no-store', signal:AbortSignal.timeout(1000)});
+          if (vr.ok) {
+            const vd = await vr.json();
+            if (vd.hex) {
+              const bytes = new Uint8Array(vd.hex.length / 2);
+              for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(vd.hex.slice(i*2, i*2+2), 16);
+              window._negHeatUpdate(bytes);
+            }
+          }
+        } catch(e) {}
+      }
     } else {
       if (dot) { dot.className = 'dot'; dot.style.background = 'var(--warn)'; dot.style.boxShadow = ''; dot.style.animation = ''; }
       if (badge) { badge.textContent = 'SEEDING'; badge.style.color = 'var(--warn)'; badge.style.borderColor = 'var(--warn)'; }
@@ -3412,6 +3992,19 @@ setTimeout(pollNeg, 800);
   updateVaultUI();
 })();
 
+// ── AI WIZARD TOAST ──
+let _wizardToastTimer = null;
+function showWizardToast() {
+  const toast = document.getElementById('wizard-toast');
+  if (!toast) return;
+  if (_wizardToastTimer) { clearTimeout(_wizardToastTimer); _wizardToastTimer = null; }
+  toast.classList.add('visible');
+  _wizardToastTimer = setTimeout(() => {
+    toast.classList.remove('visible');
+    _wizardToastTimer = null;
+  }, 5000);
+}
+
 // Gestalt F-pattern left-border colour indicators per section
 // Dual Coding Theory: visual symbol + label + body text = multiple memory paths
 document.addEventListener('DOMContentLoaded', () => {
@@ -3439,6 +4032,233 @@ document.addEventListener('DOMContentLoaded', () => {
     h.insertBefore(sym, h.firstChild);
   });
 });
+
+// ══════════════════════════════════════════════════════════
+//  PIN GATE — SHA-256 hashed PIN, auto-lock on idle
+//  PIN hash stored in localStorage. Never stores plain PIN.
+//  Auto-locks after IDLE_MS of no mouse/key/touch activity.
+// ══════════════════════════════════════════════════════════
+(function() {
+  const STORE_KEY  = 'sqrng_pin_hash';   // localStorage key for hashed PIN
+  const IDLE_MS    = 5 * 60 * 1000;     // 5 minutes
+  const MAX_FAILS  = 5;
+  const LOCK_SECS  = 30;
+
+  let _entry   = '';          // current PIN being typed
+  let _mode    = 'unlock';    // 'unlock' | 'set' | 'confirm'
+  let _setPin  = '';          // first entry during set flow
+  let _fails   = 0;
+  let _locked  = true;
+  let _lockedOut = false;
+  let _lockTimer = null;
+  let _idleTimer = null;
+  let _idleStart = Date.now();
+
+  // ── SHA-256 helper ────────────────────────────────────────
+  async function sha256hex(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // ── DOM helpers ───────────────────────────────────────────
+  function setError(msg) {
+    const el = document.getElementById('pin-error');
+    if (el) el.textContent = msg;
+  }
+  function setMode(label) {
+    const el = document.getElementById('pin-mode-lbl');
+    if (el) el.textContent = label;
+  }
+  function updateDots() {
+    for (let i = 0; i < 6; i++) {
+      const d = document.getElementById('pd' + i);
+      if (!d) continue;
+      d.classList.toggle('filled', i < _entry.length);
+      d.classList.toggle('set-mode', _mode === 'set' || _mode === 'confirm');
+    }
+  }
+
+  // ── Lock / unlock ─────────────────────────────────────────
+  function showGate() {
+    const g = document.getElementById('pin-gate');
+    if (g) { g.style.display = 'flex'; g.classList.remove('hidden'); }
+    _entry = '';
+    updateDots();
+    setError('');
+    const hasPIN = !!localStorage.getItem(STORE_KEY);
+    if (!hasPIN) {
+      _mode = 'set';
+      setMode('SET A PIN  (4–6 digits)');
+      const cb = document.getElementById('pin-change-btn');
+      if (cb) cb.style.display = 'none';
+    } else {
+      _mode = 'unlock';
+      setMode('ENTER PIN');
+      const cb = document.getElementById('pin-change-btn');
+      if (cb) cb.style.display = '';
+    }
+  }
+
+  function hideGate() {
+    const g = document.getElementById('pin-gate');
+    if (g) { g.classList.add('hidden'); setTimeout(() => { g.style.display = 'none'; }, 360); }
+    _locked = false;
+    resetIdle();
+  }
+
+  // ── Idle tracking ─────────────────────────────────────────
+  let _idleRafId = null;
+
+  function resetIdle() {
+    _idleStart = Date.now();
+    clearTimeout(_idleTimer);
+    _idleTimer = setTimeout(() => { if (!_locked) pinLock(); }, IDLE_MS);
+    if (_idleRafId !== null) { cancelAnimationFrame(_idleRafId); _idleRafId = null; }
+    updateIdleBar();
+  }
+
+  function updateIdleBar() {
+    const fill = document.getElementById('idle-fill');
+    if (!fill || _locked) { _idleRafId = null; return; }
+    const elapsed = Date.now() - _idleStart;
+    const pct = Math.max(0, 100 - (elapsed / IDLE_MS * 100));
+    fill.style.width = pct + '%';
+    fill.style.background = pct < 20 ? 'var(--danger)' : pct < 40 ? 'var(--warn)' : 'var(--accent)';
+    _idleRafId = requestAnimationFrame(updateIdleBar);
+  }
+
+  ['mousemove','mousedown','keydown','touchstart','scroll'].forEach(ev =>
+    document.addEventListener(ev, () => { if (!_locked) resetIdle(); }, {passive:true})
+  );
+
+  // ── PIN input logic ───────────────────────────────────────
+  window.pinKey = function(d) {
+    if (_lockedOut || _entry.length >= 6) return;
+    _entry += d;
+    updateDots();
+    setError('');
+    if (_entry.length === 6) pinSubmit();
+  };
+
+  window.pinDel = function() {
+    _entry = _entry.slice(0, -1);
+    updateDots();
+    setError('');
+  };
+
+  window.pinSubmit = async function() {
+    if (_lockedOut) return;
+    if (_entry.length < 4) { setError('MIN 4 DIGITS'); return; }
+    const hash = await sha256hex(_entry);
+
+    if (_mode === 'set') {
+      _setPin = _entry;
+      _entry = '';
+      _mode = 'confirm';
+      setMode('CONFIRM PIN');
+      updateDots();
+      return;
+    }
+
+    if (_mode === 'confirm') {
+      if (_entry !== _setPin) {
+        setError('PINs DO NOT MATCH — TRY AGAIN');
+        _entry = ''; _setPin = ''; _mode = 'set';
+        setMode('SET A PIN  (4–6 digits)');
+        updateDots();
+        return;
+      }
+      localStorage.setItem(STORE_KEY, hash);
+      const cb = document.getElementById('pin-change-btn');
+      if (cb) cb.style.display = '';
+      setError('');
+      hideGate();
+      return;
+    }
+
+    // unlock mode
+    const stored = localStorage.getItem(STORE_KEY);
+    if (hash === stored) {
+      _fails = 0;
+      updateAttempts();
+      hideGate();
+    } else {
+      _fails++;
+      _entry = '';
+      updateDots();
+      updateAttempts();
+      if (_fails >= MAX_FAILS) {
+        startLockout();
+      } else {
+        setError('INCORRECT PIN — ' + (MAX_FAILS - _fails) + ' ATTEMPTS REMAINING');
+      }
+    }
+  };
+
+  function updateAttempts() {
+    const el = document.getElementById('pin-attempts');
+    if (!el) return;
+    el.textContent = _fails > 0 ? `FAILS: ${_fails}/${MAX_FAILS}` : '';
+    el.style.color = _fails >= MAX_FAILS - 1 ? 'var(--danger)' : 'var(--muted)';
+  }
+
+  function startLockout() {
+    _lockedOut = true;
+    setError(`TOO MANY FAILURES — LOCKED ${LOCK_SECS}s`);
+    const bar  = document.getElementById('pin-lockout-bar');
+    const fill = document.getElementById('pin-lockout-fill');
+    if (bar)  bar.style.display = 'block';
+    if (fill) fill.style.width = '100%';
+    let remaining = LOCK_SECS;
+    const tick = setInterval(() => {
+      remaining--;
+      if (fill) fill.style.width = (remaining / LOCK_SECS * 100) + '%';
+      if (remaining <= 0) {
+        clearInterval(tick);
+        _lockedOut = false;
+        _fails = 0;
+        updateAttempts();
+        setError('');
+        if (bar) bar.style.display = 'none';
+        _entry = '';
+        updateDots();
+      } else {
+        setError(`TOO MANY FAILURES — LOCKED ${remaining}s`);
+      }
+    }, 1000);
+  }
+
+  // ── Change PIN flow ───────────────────────────────────────
+  window.pinStartChange = function() {
+    _setPin  = '';
+    _entry   = '';
+    _mode    = 'set';
+    setMode('SET NEW PIN  (4–6 digits)');
+    updateDots();
+    setError('');
+  };
+
+  // ── Manual lock ───────────────────────────────────────────
+  window.pinLock = function() {
+    _locked = true;
+    clearTimeout(_idleTimer);
+    const fill = document.getElementById('idle-fill');
+    if (fill) fill.style.width = '100%';
+    showGate();
+  };
+
+  // ── Keyboard support ──────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (!_locked) return;
+    if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+    else if (e.key === 'Backspace') pinDel();
+    else if (e.key === 'Enter') pinSubmit();
+  });
+
+  // ── Boot ──────────────────────────────────────────────────
+  showGate();
+
+})();
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿“””
+"""
 SOVEREIGN QRNG — DASHBOARD API SERVER
 =======================================
 Serves the dashboard HTML + aggregates stats from both entropy engines.
@@ -12,16 +12,20 @@ GET /api/near            → near_entropy stats (port 8766)
 GET /api/both            → combined JSON {true: {...}, near: {...}}
 GET /api/bytes?n=N       → N raw entropy bytes as hex (max 4096)
 POST /api/purge_near     → zero and reset the NEAR vault
-“””
+"""
 
-import json, os, urllib.request, hashlib, time
+import json, os, urllib.request, hashlib, time, socket
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+try:
+    import psutil as _psutil
+except ImportError:
+    _psutil = None
 
-DASHBOARD      = Path(__file__).parent / “dashboard.html”
-NEAR_DASHBOARD = Path(__file__).parent / “near_dashboard.html”
-TRUE_DASHBOARD = Path(__file__).parent / “true_dashboard.html”
-from config import TRUE_STATS, NEAR_STATS, NEAR_VAULT, NEAR_OFFSET
+DASHBOARD      = Path(__file__).parent / "dashboard.html"
+NEAR_DASHBOARD = Path(__file__).parent / "near_dashboard.html"
+TRUE_DASHBOARD = Path(__file__).parent / "true_dashboard.html"
+from config import TRUE_STATS, NEAR_STATS, NEAR_VAULT, NEAR_OFFSET, TRUE_VAULT, TRUE_OFFSET
 PORT           = 8888
 
 
@@ -108,6 +112,23 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "purged_bytes": purged})
             except Exception as e:
                 self._err(500, str(e))
+        elif p == "/api/purge_true":
+            # Triple-lock purge — wipe true vault and reset offset
+            try:
+                purged = 0
+                if TRUE_VAULT.exists():
+                    purged = TRUE_VAULT.stat().st_size
+                    with open(TRUE_VAULT, "wb") as vf:
+                        chunk = b'\x00' * 65536
+                        written = 0
+                        while written < purged:
+                            n = min(65536, purged - written)
+                            vf.write(chunk[:n])
+                            written += n
+                TRUE_OFFSET.write_text("0")
+                self._json({"ok": True, "purged_bytes": purged})
+            except Exception as e:
+                self._err(500, str(e))
         else:
             self.send_response(404)
             self.end_headers()
@@ -160,6 +181,66 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 raw = os.urandom(n)
             self._json({"n": n, "hex": raw.hex()})
+        elif p == "/api/health":
+            # System health snapshot for monitoring
+            services = {
+                "webcam":  8090, "true_entropy": 8765, "near_entropy": 8766,
+                "neg_entropy": 8767, "entropy_api": 8888,
+                "rf_watchdog": 8768, "glances": 8099,
+            }
+            status = {}
+            for name, port in services.items():
+                try:
+                    s = socket.socket(); s.settimeout(0.3)
+                    up = s.connect_ex(("127.0.0.1", port)) == 0; s.close()
+                except Exception:
+                    up = False
+                status[name] = "UP" if up else "DOWN"
+            near_fill = int(NEAR_OFFSET.read_text().strip()) if NEAR_OFFSET.exists() else 0
+            true_fill = int(TRUE_OFFSET.read_text().strip()) if TRUE_OFFSET.exists() else 0
+            health = {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "services": status,
+                "near_vault_mb": round(near_fill / 1_048_576, 2),
+                "true_vault_mb": round(true_fill / 1_048_576, 2),
+            }
+            if _psutil:
+                health["cpu_pct"]   = _psutil.cpu_percent(interval=0.1)
+                health["ram_pct"]   = _psutil.virtual_memory().percent
+                health["ram_avail_mb"] = round(_psutil.virtual_memory().available / 1_048_576, 1)
+            self._json(health)
+        elif p == "/metrics":
+            # Prometheus text format for scraping
+            near_fill = int(NEAR_OFFSET.read_text().strip()) if NEAR_OFFSET.exists() else 0
+            true_fill = int(TRUE_OFFSET.read_text().strip()) if TRUE_OFFSET.exists() else 0
+            lines = [
+                "# HELP entropy_near_vault_bytes NEAR vault written bytes",
+                "# TYPE entropy_near_vault_bytes gauge",
+                f"entropy_near_vault_bytes {near_fill}",
+                "# HELP entropy_true_vault_bytes TRUE vault written bytes",
+                "# TYPE entropy_true_vault_bytes gauge",
+                f"entropy_true_vault_bytes {true_fill}",
+            ]
+            if _psutil:
+                vm = _psutil.virtual_memory()
+                lines += [
+                    "# HELP entropy_rig_ram_pct RAM usage percent",
+                    "# TYPE entropy_rig_ram_pct gauge",
+                    f"entropy_rig_ram_pct {vm.percent}",
+                    "# HELP entropy_rig_cpu_pct CPU usage percent",
+                    "# TYPE entropy_rig_cpu_pct gauge",
+                    f"entropy_rig_cpu_pct {_psutil.cpu_percent(interval=0.05)}",
+                ]
+            body = "\n".join(lines).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.end_headers()
+            self.wfile.write(body)
+        elif p == "/api/true_vault_info":
+            vault_exists = TRUE_VAULT.exists()
+            vault_bytes  = TRUE_VAULT.stat().st_size if vault_exists else 0
+            offset       = int(TRUE_OFFSET.read_text().strip()) if TRUE_OFFSET.exists() else 0
+            self._json({"vault_bytes": vault_bytes, "offset": offset, "vault_exists": vault_exists})
         else:
             self.send_response(404)
             self.end_headers()

@@ -45,7 +45,7 @@ RTL_FREQ        = 100.0e6    # stats display only; actual freqs are per-dongle b
 RTL_SAMPLE_RATE = 256e3   # 256 KSPS — pipe fills at 512 KB/s; 128ms headroom vs 5ms GIL switch
 RTL_GAIN        = 29.7       # ~30 dB — E4000 snaps to 29.7 dB step; puts FM band thermal+ambient noise at ~30-50% ADC range (std 30-60); 40 dB was amplifying ADC quantization noise floor only (std ~9)
 RTL_RETRY_SEC   = 20         # longer retry gap — prevents rapid hammering that corrupts USB state
-RTL_MAX_DEVICES = 1          # Single dongle session — set to 2 when second dongle is confirmed working
+RTL_MAX_DEVICES = 2          # Both dongles on WinUSB/HVCI-safe; [0]=SMArt XTR v5 E4000, [1]=R828D
 # Per-dongle: E4000 (SN:00000001) confirmed on 100 MHz. 300 MHz caused "Failed to set center freq" on this unit.
 RTL_TCP_FREQS   = [96.9e6, 500.0e6]     # [0]=96.9MHz inter-station FM gap (dense ambient noise floor, avoids DC LO artifact); [1]=500MHz R828D (slot reserved)
 RTL_TCP_PORTS   = [1234,     1235]       # one rtl_tcp instance per dongle
@@ -136,6 +136,7 @@ _last_bytes: deque = deque(maxlen=128)
 _rtl  = [{"status": "NOT_CONNECTED", "bps": 0.0} for _ in range(RTL_MAX_DEVICES)]
 _cpu  = {"status": "STARTING",  "bps": 0.0}
 _audio = {"status": "STARTING", "bps": 0.0}
+_rtl_lock = threading.Lock()
 
 # ─────────────────────────────────────────────
 # SOURCE 1 — WEBCAM (built-in cam, RGB LSB)
@@ -315,7 +316,8 @@ def rtl_worker(device_index: int):
       6. Escher-6 cascade
     """
     if not RTL_SDR_EXE.exists():
-        _rtl[device_index]["status"] = "NO_RTL_SDR_EXE"
+        with _rtl_lock:
+            _rtl[device_index]["status"] = "NO_RTL_SDR_EXE"
         log.error(f"RTL-SDR[{device_index}]: rtl_sdr.exe not found at {RTL_SDR_EXE}")
         return
 
@@ -328,13 +330,15 @@ def rtl_worker(device_index: int):
     def _processor():
         bits_this_sec = 0
         last_rate_t   = time.time()
-        _rtl[device_index]["dbg_blocks"] = 0   # debug: blocks seen by processor
+        with _rtl_lock:
+            _rtl[device_index]["dbg_blocks"] = 0
         while _proc_active.is_set():
             if not _iq_queue:
                 time.sleep(0.005)
             else:
                 raw = _iq_queue.popleft()
-                _rtl[device_index]["dbg_blocks"] += 1
+                with _rtl_lock:
+                    _rtl[device_index]["dbg_blocks"] += 1
                 try:
                     raw8 = np.frombuffer(raw, dtype=np.uint8)
                     # Skip malformed blocks — odd-length or too small (happen on crash flush)
@@ -397,7 +401,8 @@ def rtl_worker(device_index: int):
 
             now = time.time()
             if now - last_rate_t >= 1.0:
-                _rtl[device_index]["bps"] = bits_this_sec / (now - last_rate_t)
+                with _rtl_lock:
+                    _rtl[device_index]["bps"] = bits_this_sec / (now - last_rate_t)
                 bits_this_sec = 0
                 last_rate_t   = now
 
@@ -425,10 +430,12 @@ def rtl_worker(device_index: int):
                 if not raw:
                     if first_block:
                         log.warning(f"RTL-SDR[{device_index}]: rtl_sdr.exe exited immediately (device busy?)")
-                        _rtl[device_index]["status"] = "NOT_CONNECTED"
+                        with _rtl_lock:
+                            _rtl[device_index]["status"] = "NOT_CONNECTED"
                     raise EOFError("rtl_sdr.exe stdout closed")
                 if first_block:
-                    _rtl[device_index]["status"] = "LIVE"
+                    with _rtl_lock:
+                        _rtl[device_index]["status"] = "LIVE"
                     log.info(f"RTL-SDR[{device_index}]: LIVE via stdout pipe, {freq/1e6:.2f} MHz, {RTL_GAIN} dB")
                     first_block = False
                 _iq_queue.append(raw)
@@ -436,8 +443,9 @@ def rtl_worker(device_index: int):
         except Exception as e:
             log.warning(f"RTL-SDR[{device_index}] error: {e}. Retry in {RTL_RETRY_SEC}s")
         finally:
-            _rtl[device_index]["status"] = "DISCONNECTED"
-            _rtl[device_index]["bps"]    = 0.0
+            with _rtl_lock:
+                _rtl[device_index]["status"] = "DISCONNECTED"
+                _rtl[device_index]["bps"]    = 0.0
             if sdr_proc and sdr_proc.poll() is None:
                 sdr_proc.terminate()
                 try: sdr_proc.wait(timeout=3)
@@ -457,35 +465,35 @@ def cpu_jitter_worker():
 
     while True:
         try:
-            bits = []
-            target = CPU_JITTER_BITS_PER_ITER * 4  # overshoot for Von Neumann waste
+            # --- Source A: SHA-256 workload timing jitter (full deltas, not LSBs) ---
+            sha_deltas = []
             prev = time.perf_counter_ns()
-
-            while len(bits) < target:
-                # Variable-timing SHA-256 workload creates measurable jitter
+            for _ in range(CPU_JITTER_BITS_PER_ITER):
                 hashlib.sha256(str(time.perf_counter_ns()).encode()).digest()
                 now = time.perf_counter_ns()
-                delta = now - prev
+                sha_deltas.append(now - prev)
                 prev = now
-                # 4 LSBs from the timing delta carry jitter entropy
-                bits.extend([(delta >> i) & 1 for i in range(4)])
+
+            # --- Source B: OS scheduler sleep overshoot (independent of L1 cache) ---
+            sched_deltas = []
+            for _ in range(4):
+                t0 = time.perf_counter_ns()
+                time.sleep(0.001)
+                sched_deltas.append(abs((time.perf_counter_ns() - t0) - 1_000_000))
 
             # XOR-condition with BCryptGenRandom for defense-in-depth
             bcrypt_seed = bcrypt_gen_random(32)
 
-            arr = np.array(bits, dtype=np.uint8)
-            debiased = von_neumann(arr)
-            if len(debiased) >= 8:
-                n = (len(debiased) // 8) * 8
-                raw = bytearray(np.packbits(
-                    debiased[:n].reshape(-1, 8), axis=1, bitorder='little'
-                ).flatten())
-                # Fold in CNG bytes
-                for i, b in enumerate(bcrypt_seed[:len(raw)]):
-                    raw[i] ^= b
-                conditioned = escher_cascade(bytes(raw))
-                entropy_queue.append(conditioned)
-                bits_this_sec += len(conditioned) * 8
+            # Pack raw deltas from both sources; Escher acts as hash extractor (no VN needed)
+            sha_raw   = struct.pack(f">{len(sha_deltas)}Q", *sha_deltas)
+            sched_raw = struct.pack(f">{len(sched_deltas)}Q", *sched_deltas)
+            combined  = bytearray(sha_raw + sched_raw)
+            for i in range(min(32, len(combined))):
+                combined[i] ^= bcrypt_seed[i]
+
+            conditioned = escher_cascade(bytes(combined))
+            entropy_queue.append(conditioned)
+            bits_this_sec += len(conditioned) * 8
 
             now = time.time()
             if now - last_rate_t >= 1.0:
@@ -598,6 +606,7 @@ def flush_to_vault():
     files = sorted(POOL_DIR.glob("n_*.bin"))
     if not files or offset >= VAULT_SIZE:
         return offset
+    flushed = []
     with open(VAULT_FILE, "r+b") as vf:
         vf.seek(offset)
         for f in files:
@@ -606,8 +615,14 @@ def flush_to_vault():
             if space <= 0: break
             vf.write(data[:space])
             offset += min(len(data), space)
-            f.unlink()
-    OFFSET_FILE.write_text(str(offset))
+            flushed.append(f)
+        vf.flush()
+        os.fsync(vf.fileno())
+    for f in flushed:
+        f.unlink()
+    tmp = OFFSET_FILE.with_suffix(".tmp")
+    tmp.write_text(str(offset))
+    tmp.replace(OFFSET_FILE)
     return offset
 
 def pool_bytes():
@@ -639,12 +654,14 @@ def start_api():
     log.info("Near stats API on :8766")
 
 def write_stats(cam_status, fps, cam_bps, balance, chunks, pool_b, vault_off):
-    rtl_total_bps = sum(d["bps"] for d in _rtl if d["status"] == "LIVE")
+    with _rtl_lock:
+        rtl_snap = [d.copy() for d in _rtl]
+    rtl_total_bps = sum(d["bps"] for d in rtl_snap if d["status"] == "LIVE")
     total_bps = cam_bps + rtl_total_bps + _cpu["bps"] + _audio["bps"]
 
     active = []
     if cam_status == "LIVE":   active.append("webcam")
-    for i, d in enumerate(_rtl):
+    for i, d in enumerate(rtl_snap):
         if d["status"] == "LIVE": active.append(f"RTL-SDR[{i}]")
     if _cpu["status"] == "LIVE":   active.append("cpu_jitter")
     if _audio["status"] == "LIVE": active.append("audio_adc")
@@ -661,14 +678,14 @@ def write_stats(cam_status, fps, cam_bps, balance, chunks, pool_b, vault_off):
         "cam_bps":       round(cam_bps, 1),
         "cam_status":    cam_status,
         # RTL-SDR per-dongle
-        "rtl0_status":   _rtl[0]["status"] if len(_rtl) > 0 else "DISABLED",
-        "rtl0_bps":      round(_rtl[0]["bps"], 1) if len(_rtl) > 0 else 0,
-        "rtl0_dbg_blocks": _rtl[0].get("dbg_blocks", -1),
-        "rtl1_status":   _rtl[1]["status"] if len(_rtl) > 1 else "DISABLED",
-        "rtl1_bps":      round(_rtl[1]["bps"], 1) if len(_rtl) > 1 else 0,
+        "rtl0_status":   rtl_snap[0]["status"] if len(rtl_snap) > 0 else "DISABLED",
+        "rtl0_bps":      round(rtl_snap[0]["bps"], 1) if len(rtl_snap) > 0 else 0,
+        "rtl0_dbg_blocks": rtl_snap[0].get("dbg_blocks", -1),
+        "rtl1_status":   rtl_snap[1]["status"] if len(rtl_snap) > 1 else "DISABLED",
+        "rtl1_bps":      round(rtl_snap[1]["bps"], 1) if len(rtl_snap) > 1 else 0,
         "rtl_freq_mhz":  RTL_FREQ / 1e6,
         # legacy compat
-        "rtl_status":    _rtl[0]["status"],
+        "rtl_status":    rtl_snap[0]["status"],
         "rtl_bps":       round(rtl_total_bps, 1),
         # CPU jitter
         "cpu_status":    _cpu["status"],

@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOVEREIGN QRNG — PHOENIX</title>
+<style>
+/* ── DESIGN TOKENS (from research: #0d1117 base, max 2 accents, 4-level type scale) ── */
+:root {
+  --bg:       #0d1117;
+  --surface:  rgba(255,255,255,0.035);
+  --border:   rgba(255,255,255,0.07);
+  --text:     #e2e8f0;
+  --muted:    #4b5563;
+
+  --true:     #00ff88;
+  --true-dim: rgba(0,255,136,0.12);
+  --near:     #00d4ff;
+  --near-dim: rgba(0,212,255,0.12);
+  --laser2:   #f59e0b;
+  --laser2-dim:rgba(245,158,11,0.12);
+  --escher:   #c084fc;
+  --escher-dim:rgba(192,132,252,0.12);
+  --warn:     #f59e0b;
+  --danger:   #ef4444;
+
+  /* 4-level type scale */
+  --sz-title:  36px;
+  --sz-value:  34px;
+  --sz-body:   18px;
+  --sz-label:  13px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body { height:100%; overflow:hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--sz-body);
+  display: flex;
+  flex-direction: column;
+}
+
+/* subtle scanlines — from research */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:9000;
+  background: repeating-linear-gradient(0deg,
+    transparent, transparent 2px,
+    rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+}
+
+/* ══════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════ */
+#hdr {
+  flex-shrink: 0;
+  padding: 14px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+#hdr h1 {
+  font-size: var(--sz-title);
+  letter-spacing: 8px;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 0 30px var(--true), 0 0 60px rgba(0,255,136,0.2);
+}
+
+#hdr .tagline {
+  font-size: var(--sz-label);
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#pills {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 5px 14px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: var(--sz-label);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pill.p-true   { color:var(--true);   border-color:var(--true);   box-shadow:0 0 8px rgba(0,255,136,0.25); }
+.pill.p-near   { color:var(--near);   border-color:var(--near);   box-shadow:0 0 8px rgba(0,212,255,0.25); }
+.pill.p-laser2 { color:var(--laser2); border-color:var(--laser2); box-shadow:0 0 8px rgba(245,158,11,0.25); }
+.pill.p-escher { color:var(--escher); border-color:var(--escher); box-shadow:0 0 8px rgba(192,132,252,0.25); }
+.pill.p-rate   { color:#fff;          border-color:rgba(255,255,255,0.2); }
+.pill.dim      { color:var(--muted);  border-color:rgba(255,255,255,0.1); box-shadow:none; }
+
+#clock-display {
+  font-size: var(--sz-body);
+  letter-spacing: 3px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════
+   2×2 FEED GRID  (the star of the show)
+══════════════════════════════════════════ */
+#feeds {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;   /* rows size to square feed content */
+  gap: 10px;
+  padding: 10px 16px;
+  align-content: start;
+}
+
+/* ── FEED CARD — glassmorphism from research ── */
+.fc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.3s;
+  min-height: 0;
+}
+
+.fc.true   { --accent: var(--true);   --accent-dim: var(--true-dim);   }
+.fc.near   { --accent: var(--near);   --accent-dim: var(--near-dim);   }
+.fc.laser2 { --accent: var(--laser2); --accent-dim: var(--laser2-dim); }
+.fc.escher { --accent: var(--escher); --accent-dim: var(--escher-dim); }
+
+.fc.live-border { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-dim); }
+
+/* card title bar */
+.fc-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+.fc-dot.live {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-dim);
+  animation: dotpulse 2s ease-in-out infinite;
+}
+@keyframes dotpulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+.fc-title {
+  font-size: var(--sz-body);
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.fc-sub {
+  font-size: var(--sz-label);
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.fc-badge {
+  margin-left: auto;
+  font-size: var(--sz-label);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  color: var(--accent);
+}
+.fc-badge.dim { border-color: var(--muted); color: var(--muted); }
+
+/* ── THE FEED — SQUARE via padding-top trick ──────────────────
+   aspect-ratio alone fails on MJPEG streams — the browser uses
+   the stream's native 16:9 dimensions instead.
+   padding-top: 100% forces the wrapper square from its OWN WIDTH,
+   then img/canvas fill it absolutely. Reliable for any content type.
+─────────────────────────────────────────────────────────────── */
+.fc-feed {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;     /* 1:1 — height equals width, always */
+  background: #000;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.fc-feed img,
+.fc-feed canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;     /* crops 16:9 to square from centre — laser ROI is centred */
+  display: block;
+}
+
+/* corner bracket overlay */
+.fc-feed::before, .fc-feed::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  z-index: 2; pointer-events: none;
+}
+.fc-feed::before { top:8px; left:8px; border-top:2px solid var(--accent); border-left:2px solid var(--accent); }
+.fc-feed::after  { bottom:8px; right:8px; border-bottom:2px solid var(--accent); border-right:2px solid var(--accent); }
+
+.feed-tag {
+  position: absolute; bottom: 10px; left: 10px;
+  font-size: var(--sz-label); letter-spacing: 2px;
+  color: var(--accent); text-transform: uppercase; z-index: 3;
+  text-shadow: 0 0 8px var(--accent);
+}
+
+.feed-offline {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.9);
+  color: var(--muted);
+}
+.feed-offline .fo-icon { font-size: 32px; }
+.feed-offline .fo-text { font-size: var(--sz-body); letter-spacing: 4px; text-transform: uppercase; }
+.feed-offline .fo-sub  { font-size: var(--sz-label); letter-spacing: 2px; color:#374151; }
+
+/* ── STATS STRIP below each feed ── */
+.fc-stats {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.fc-stat {
+  background: var(--bg);
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.fc-sv {
+  font-size: var(--sz-value);
+  font-weight: bold;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent-dim);
+  margin-bottom: 5px;
+}
+
+.fc-sl {
+  font-size: var(--sz-label);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.bok  { color: var(--true)   !important; }
+.bwrn { color: var(--warn)   !important; }
+.bbad { color: var(--danger) !important; }
+
+/* ══════════════════════════════════════════
+   BOTTOM SECTION
+══════════════════════════════════════════ */
+#bottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 14px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* vault bars */
+.vault-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vl {
+  font-size: var(--sz-body);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.vtrack {
+  flex: 1;
+  height: 18px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vfill {
+  height: 100%;
+  transition: width 1.5s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 1px;
+}
+.vfill::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);
+  width:50%; animation: shim 2s linear infinite;
+}
+@keyframes shim { 0%{transform:translateX(-150%)} 100%{transform:translateX(300%)} }
+
+.vfill.true   { background: linear-gradient(90deg,#002211,#00aa55,var(--true));   box-shadow:2px 0 12px var(--true); }
+.vfill.near   { background: linear-gradient(90deg,#001122,#0077aa,var(--near));   box-shadow:2px 0 12px var(--near); }
+
+.vpct {
+  font-size: 24px;
+  font-weight: bold;
+  width: 100px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.vault-row.true .vpct { color: var(--true); }
+.vault-row.near .vpct { color: var(--near); }
+
+.vgb {
+  font-size: var(--sz-body);
+  letter-spacing: 1px;
+  color: var(--muted);
+  width: 180px;
+  flex-shrink: 0;
+}
+
+/* escher pipeline */
+.epipe-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ep-label {
+  font-size: var(--sz-body);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.ep-stages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.ep-stage {
+  flex: 1;
+  text-align: center;
+  padding: 5px 4px;
+  border: 1px solid;
+  border-radius: 3px;
+  cursor: default;
+}
+.ep-icon { font-size: 20px; display: block; line-height: 1; }
+.ep-name { font-size: 13px; letter-spacing: 1px; display: block; margin-top: 3px; }
+
+.ep-stage.s0 { border-color:#004433; color:#00cc66; }
+.ep-stage.s1 { border-color:#003344; color:#0099cc; }
+.ep-stage.s2 { border-color:#002244; color:#4477ff; }
+.ep-stage.s3 { border-color:#220044; color:#9944ff; }
+.ep-stage.s4 { border-color:#440022; color:#ff44aa; }
+.ep-stage.s5 { border-color:#443300; color:#ffcc00; }
+
+.ep-stage.ef { animation: estage 0.28s ease; }
+@keyframes estage { 0%{background:rgba(255,255,255,0.15)} 100%{background:transparent} }
+
+.ep-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; }
+
+/* totals row */
+.totals-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.tot-item { display: flex; align-items: baseline; gap: 10px; }
+.tot-val  { font-size: 26px; font-weight: bold; color: #fff; }
+.tot-label{ font-size: var(--sz-body); letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+
+.rtl-indicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--sz-body);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.rtl-dot-sm { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.rtl-dot-sm.live { background: var(--near); box-shadow: 0 0 6px var(--near); }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+<div id="hdr">
+  <div>
+    <h1>SOVEREIGN QRNG</h1>
+    <div class="tagline">Dual-Source Quantum Entropy — Phoenix</div>
+  </div>
+  <div id="pills">
+    <span class="pill p-true dim" id="pill-true">TRUE ● —</span>
+    <span class="pill p-near dim" id="pill-near">NEAR ● —</span>
+    <span class="pill p-laser2 dim" id="pill-laser2">LASER-2 ● PENDING</span>
+    <span class="pill p-rate dim" id="pill-rate">— b/s</span>
+  </div>
+  <div id="clock-display" id="clock">--:--:--</div>
+</div>
+
+<!-- ══ 2×2 FEED GRID ══════════════════════════════════════════════════ -->
+<div id="feeds">
+
+  <!-- ① TRUE ENTROPY — USB cam + laser -->
+  <div class="fc true" id="fc-true">
+    <div class="fc-bar">
+      <div class="fc-dot" id="dot-true"></div>
+      <span class="fc-title">True Entropy</span>
+      <span class="fc-sub">USB cam · laser shot</span>
+      <span class="fc-badge dim" id="badge-true">WAITING</span>
+    </div>
+    <div class="fc-feed">
+      <img id="feed-true" src="http://127.0.0.1:8090/stream_usb.mjpeg">
+      <span class="feed-tag">CAM-A · USB · LASER</span>
+      <div class="feed-offline" id="off-true">
+        <span class="fo-icon">◎</span>
+        <span class="fo-text">Feed Offline</span>
+        <span class="fo-sub">Check webcam_server.py</span>
+      </div>
+    </div>
+    <div class="fc-stats">
+      <div class="fc-stat">
+        <div class="fc-sv" id="t-bps">—</div>
+        <div class="fc-sl">Bits / Sec</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="t-fps">—</div>
+        <div class="fc-sl">FPS</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="t-bal">—</div>
+        <div class="fc-sl" id="t-balst">Balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② NEAR ENTROPY — built-in cam + RTL-SDR -->
+  <div class="fc near" id="fc-near">
+    <div class="fc-bar">
+      <div class="fc-dot" id="dot-near"></div>
+      <span class="fc-title">Near Entropy</span>
+      <span class="fc-sub">Built-in cam · RTL-SDR</span>
+      <span class="fc-badge dim" id="badge-near">WAITING</span>
+    </div>
+    <div class="fc-feed">
+      <img id="feed-near" src="http://127.0.0.1:8090/stream_builtin.mjpeg">
+      <span class="feed-tag">CAM-B · BUILT-IN</span>
+      <div class="feed-offline" id="off-near">
+        <span class="fo-icon">◎</span>
+        <span class="fo-text">Feed Offline</span>
+        <span class="fo-sub">Check webcam_server.py</span>
+      </div>
+    </div>
+    <div class="fc-stats">
+      <div class="fc-stat">
+        <div class="fc-sv" id="n-bps">—</div>
+        <div class="fc-sl">Bits / Sec</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="n-cbps">—</div>
+        <div class="fc-sl">Cam Rate</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="n-bal">—</div>
+        <div class="fc-sl" id="n-balst">Balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ LASER CAM 2 — placeholder -->
+  <div class="fc laser2" id="fc-laser2">
+    <div class="fc-bar">
+      <div class="fc-dot"></div>
+      <span class="fc-title">Laser Cam 2</span>
+      <span class="fc-sub">Second shot-noise source</span>
+      <span class="fc-badge dim">PENDING</span>
+    </div>
+    <div class="fc-feed">
+      <div class="feed-offline" style="display:flex">
+        <span class="fo-icon" style="color:var(--laser2);font-size:40px">⊕</span>
+        <span class="fo-text" style="color:var(--laser2)">Laser Cam 2</span>
+        <span class="fo-sub">Connect a second USB cam to CAM-C</span>
+        <span class="fo-sub">Will auto-detect on webcam_server restart</span>
+      </div>
+      <span class="feed-tag">CAM-C · PENDING</span>
+    </div>
+    <div class="fc-stats">
+      <div class="fc-stat">
+        <div class="fc-sv" style="font-size:22px;color:var(--muted)">—</div>
+        <div class="fc-sl">Bits / Sec</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" style="font-size:22px;color:var(--muted)">—</div>
+        <div class="fc-sl">FPS</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" style="font-size:22px;color:var(--muted)">—</div>
+        <div class="fc-sl">Balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ ESCHER OUTPUT — live entropy visualised as quantum noise -->
+  <div class="fc escher" id="fc-escher">
+    <div class="fc-bar">
+      <div class="fc-dot live" id="dot-escher"></div>
+      <span class="fc-title">Escher Output</span>
+      <span class="fc-sub">Combined entropy · visual noise</span>
+      <span class="fc-badge" id="badge-escher" style="border-color:var(--escher);color:var(--escher)">LIVE</span>
+    </div>
+    <div class="fc-feed">
+      <canvas id="escher-canvas"></canvas>
+      <span class="feed-tag">ESCHER · SHA-256 OUTPUT</span>
+    </div>
+    <div class="fc-stats">
+      <div class="fc-stat">
+        <div class="fc-sv" id="e-rate">—</div>
+        <div class="fc-sl">Combined b/s</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="e-chunks">—</div>
+        <div class="fc-sl">Total Chunks</div>
+      </div>
+      <div class="fc-stat">
+        <div class="fc-sv" id="e-total">—</div>
+        <div class="fc-sl">GB Collected</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /feeds -->
+
+<!-- ══ BOTTOM ═════════════════════════════════════════════════════════ -->
+<div id="bottom">
+
+  <!-- TRUE vault bar -->
+  <div class="vault-row true">
+    <span class="vl">True Vault</span>
+    <div class="vtrack"><div class="vfill true" id="vbar-true" style="width:0%"></div></div>
+    <span class="vpct" id="vpct-true">0.000%</span>
+    <span class="vgb" id="vgb-true">0.0000 / 10.00 GB</span>
+  </div>
+
+  <!-- NEAR vault bar -->
+  <div class="vault-row near">
+    <span class="vl">Near Vault</span>
+    <div class="vtrack"><div class="vfill near" id="vbar-near" style="width:0%"></div></div>
+    <span class="vpct" id="vpct-near">0.000%</span>
+    <span class="vgb" id="vgb-near">0.0000 / 5.00 GB</span>
+  </div>
+
+  <!-- Escher pipeline -->
+  <div class="epipe-row">
+    <span class="ep-label">Escher Cascade</span>
+    <div class="ep-stages">
+      <div class="ep-stage s0" id="es0"><span class="ep-icon">⊕</span><span class="ep-name">FOLD</span></div>
+      <span class="ep-arrow">›</span>
+      <div class="ep-stage s1" id="es1"><span class="ep-icon">↻</span><span class="ep-name">ROTATE</span></div>
+      <span class="ep-arrow">›</span>
+      <div class="ep-stage s2" id="es2"><span class="ep-icon">≋</span><span class="ep-name">FALL</span></div>
+      <span class="ep-arrow">›</span>
+      <div class="ep-stage s3" id="es3"><span class="ep-icon">⟨⟩</span><span class="ep-name">BRAID</span></div>
+      <span class="ep-arrow">›</span>
+      <div class="ep-stage s4" id="es4"><span class="ep-icon">✦</span><span class="ep-name">SCATTER</span></div>
+      <span class="ep-arrow">›</span>
+      <div class="ep-stage s5" id="es5"><span class="ep-icon">#</span><span class="ep-name">SHA-256</span></div>
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="totals-row">
+    <div class="tot-item">
+      <span class="tot-val" id="tot-rate">0</span>
+      <span class="tot-label">bits/sec combined</span>
+    </div>
+    <div class="tot-item">
+      <span class="tot-val" id="tot-gb">0.0000</span>
+      <span class="tot-label">GB total collected</span>
+    </div>
+    <div class="tot-item">
+      <span class="tot-val" id="tot-chunks">0</span>
+      <span class="tot-label">chunks written</span>
+    </div>
+    <div class="rtl-indicator">
+      <div class="rtl-dot-sm" id="rtl-sm-dot"></div>
+      <span id="rtl-sm-txt" style="color:var(--muted)">RTL-SDR NOT CONNECTED</span>
+    </div>
+  </div>
+
+</div><!-- /bottom -->
+
+<script>
+'use strict';
+
+// ── HELPERS ──────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = v => {
+  if (!v) return '0';
+  if (v >= 1e6) return (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return (v/1e3).toFixed(1) + 'K';
+  return Math.round(v).toString();
+};
+
+// Monitor a feed by polling its snapshot endpoint every 4 seconds.
+// MJPEG onerror is unreliable — snapshot fetch is ground truth.
+function monitorFeed(imgId, offId, streamUrl, snapshotUrl) {
+  const img = $(imgId);
+  const off = $(offId);
+  if (!img) return;
+
+  let wasOffline = false;
+
+  async function check() {
+    try {
+      const r = await fetch(snapshotUrl, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(2500)
+      });
+      if (r.ok) {
+        if (wasOffline) {
+          // Stream came back — reload the img src to restart the MJPEG
+          img.src = streamUrl;
+          img.style.opacity = '1';
+          if (off) off.style.display = 'none';
+          wasOffline = false;
+        }
+      } else {
+        throw new Error('not ok');
+      }
+    } catch {
+      wasOffline = true;
+      img.style.opacity = '0';
+      if (off) off.style.display = 'flex';
+    }
+  }
+
+  // Initial check after a short warmup, then every 4 seconds
+  setTimeout(check, 1500);
+  setInterval(check, 4000);
+}
+
+function setPill(id, status, prefix) {
+  const e = $(id); if (!e) return;
+  const live = status === 'LIVE';
+  e.classList.toggle('dim', !live);
+  e.textContent = `${prefix} ● ${live ? 'LIVE' : (status || '—')}`;
+}
+
+function setDot(id, live) {
+  const e = $(id); if (!e) return;
+  e.classList.toggle('live', live);
+}
+
+function setBadge(id, status) {
+  const e = $(id); if (!e) return;
+  const live = status === 'LIVE';
+  const low  = ['LOW_SIGNAL','DARK','INSUFFICIENT','LOW_ENERGY'].includes(status);
+  e.classList.toggle('dim', !live);
+  e.textContent = live ? 'LIVE' : (low ? status.replace(/_/g,' ') : (status || 'WAITING'));
+}
+
+function balClass(b) {
+  if (b >= 0.45 && b <= 0.55) return 'bok';
+  if (b >= 0.40 && b <= 0.60) return 'bwrn';
+  return 'bbad';
+}
+function balText(b) { return ((b||0.5)*100).toFixed(2) + '%'; }
+function balTag(b)  { return b>=0.45&&b<=0.55 ? '[ OK ]' : b>=0.40&&b<=0.60 ? '[WARN]' : '[ BAD ]'; }
+
+// ── ESCHER OUTPUT CANVAS ─────────────────────────────────────────────────
+// Renders actual entropy bytes (from last_bytes_hex in stats) as quantum noise.
+// Each byte becomes a colored pixel injected at a random position; pixels fade over time.
+let escherCtx, escherImg, escherW, escherH;
+let pendingBytes = [];
+
+function initEscher() {
+  const cv = $('escher-canvas');
+  if (!cv) return;
+  const wrap = cv.parentElement;
+  escherW = cv.width  = wrap.clientWidth  || 640;
+  escherH = cv.height = wrap.clientHeight || 360;
+  escherCtx = cv.getContext('2d');
+  escherImg = escherCtx.createImageData(escherW, escherH);
+  // init all pixels to near-black
+  for (let i = 0; i < escherImg.data.length; i += 4) {
+    escherImg.data[i] = escherImg.data[i+1] = escherImg.data[i+2] = 5;
+    escherImg.data[i+3] = 255;
+  }
+  renderEscher();
+}
+
+function renderEscher() {
+  if (!escherCtx) { requestAnimationFrame(renderEscher); return; }
+  const d = escherImg.data;
+  const len = escherW * escherH;
+
+  // Fade all pixels by 4 toward darkness
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.max(4,  d[i]   - 4);
+    d[i+1] = Math.max(0,  d[i+1] - 5);
+    d[i+2] = Math.max(4,  d[i+2] - 3);
+  }
+
+  // Inject pending entropy bytes as pixels
+  const toInject = Math.min(pendingBytes.length, 64);
+  for (let j = 0; j < toInject; j++) {
+    const byte = pendingBytes.shift();
+    // Scatter randomly across canvas
+    const px = Math.floor(Math.random() * len);
+    const i4 = px * 4;
+    // Purple-to-white coloring based on byte value: escher theme
+    const intensity = byte;
+    d[i4]   = Math.min(255, 80  + intensity);        // R — moderate red
+    d[i4+1] = Math.min(255, 20  + (intensity >> 2)); // G — low green
+    d[i4+2] = Math.min(255, 100 + intensity);        // B — strong blue → purple/violet
+    d[i4+3] = 255;
+  }
+
+  escherCtx.putImageData(escherImg, 0, 0);
+  requestAnimationFrame(renderEscher);
+}
+
+function injectEscherBytes(hexStr) {
+  if (!hexStr) return;
+  for (let i = 0; i < hexStr.length; i += 2) {
+    pendingBytes.push(parseInt(hexStr.slice(i, i+2), 16));
+    if (pendingBytes.length > 4096) pendingBytes.shift(); // cap buffer
+  }
+}
+
+// ── ESCHER STAGE FLASHER ─────────────────────────────────────────────────
+let _eStage = 0;
+setInterval(() => {
+  const el = $(`es${_eStage}`);
+  if (el) { el.classList.remove('ef'); void el.offsetWidth; el.classList.add('ef'); }
+  _eStage = (_eStage + 1) % 6;
+}, 300);
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────
+function updateClock() {
+  const n = new Date(), p = v => String(v).padStart(2,'0');
+  const el = $('clock-display');
+  if (el) el.textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── DATA POLLING ─────────────────────────────────────────────────────────
+let lastT = {}, lastN = {};
+
+async function poll() {
+  try {
+    const [td, nd] = await Promise.all([
+      fetch('/api/true', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/near', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (td) lastT = td;
+    if (nd) lastN = nd;
+    renderTrue(td);
+    renderNear(nd);
+    renderEscherPanel();
+    renderBottom();
+  } catch(e) {}
+}
+
+function renderTrue(d) {
+  if (!d) return;
+  const live = d.status === 'LIVE';
+  const low  = ['LOW_SIGNAL','DARK','INSUFFICIENT'].includes(d.status);
+
+  setPill('pill-true', d.status, 'TRUE');
+  setDot('dot-true', live || low);
+  setBadge('badge-true', d.status);
+
+  $('t-bps').textContent = fmt(d.bits_per_sec);
+  $('t-fps').textContent = (d.fps||0).toFixed(1);
+
+  const bv = $('t-bal'), bl = $('t-balst');
+  if (bv) { bv.textContent = balText(d.bit_balance); bv.className = 'fc-sv ' + balClass(d.bit_balance); }
+  if (bl) bl.textContent   = balTag(d.bit_balance);
+
+  if (d.last_bytes_hex) injectEscherBytes(d.last_bytes_hex);
+
+  // vault
+  const pct = (d.vault_pct||0);
+  $('vbar-true').style.width = Math.min(pct, 100) + '%';
+  $('vpct-true').textContent = pct.toFixed(3) + '%';
+  const gb = ((d.vault_bytes||0)/(1024**3)).toFixed(4);
+  const mx = ((d.vault_size||0)/(1024**3)).toFixed(2);
+  $('vgb-true').textContent  = `${gb} / ${mx} GB`;
+}
+
+function renderNear(d) {
+  if (!d) return;
+  const live = d.status === 'LIVE';
+
+  setPill('pill-near', d.status, 'NEAR');
+  setDot('dot-near', live);
+  setBadge('badge-near', d.status);
+
+  $('n-bps').textContent  = fmt(d.bits_per_sec);
+  $('n-cbps').textContent = fmt(d.cam_bps||0);
+
+  const bv = $('n-bal'), bl = $('n-balst');
+  if (bv) { bv.textContent = balText(d.bit_balance); bv.className = 'fc-sv ' + balClass(d.bit_balance); }
+  if (bl) bl.textContent   = balTag(d.bit_balance);
+
+  if (d.last_bytes_hex) injectEscherBytes(d.last_bytes_hex);
+
+  // RTL-SDR indicator
+  const rtlLive = d.rtl_status === 'LIVE';
+  const rtlDot  = $('rtl-sm-dot'), rtlTxt = $('rtl-sm-txt');
+  if (rtlDot) rtlDot.classList.toggle('live', rtlLive);
+  if (rtlTxt) {
+    rtlTxt.textContent  = 'RTL-SDR ' + (d.rtl_status||'NOT CONNECTED');
+    rtlTxt.style.color  = rtlLive ? 'var(--near)' : 'var(--muted)';
+  }
+
+  // vault
+  const pct = (d.vault_pct||0);
+  $('vbar-near').style.width = Math.min(pct, 100) + '%';
+  $('vpct-near').textContent = pct.toFixed(3) + '%';
+  const gb = ((d.vault_bytes||0)/(1024**3)).toFixed(4);
+  const mx = ((d.vault_size||0)/(1024**3)).toFixed(2);
+  $('vgb-near').textContent  = `${gb} / ${mx} GB`;
+}
+
+function renderEscherPanel() {
+  const cBps    = (lastT.bits_per_sec||0) + (lastN.bits_per_sec||0);
+  const cChunks = (lastT.chunks_total||0) + (lastN.chunks_total||0);
+  const tGB     = ((lastT.vault_bytes||0) + (lastN.vault_bytes||0)) / (1024**3);
+
+  $('e-rate').textContent   = fmt(cBps);
+  $('e-chunks').textContent = cChunks.toLocaleString();
+  $('e-total').textContent  = tGB.toFixed(4);
+}
+
+function renderBottom() {
+  const cBps    = (lastT.bits_per_sec||0) + (lastN.bits_per_sec||0);
+  const cChunks = (lastT.chunks_total||0) + (lastN.chunks_total||0);
+  const tGB     = ((lastT.vault_bytes||0) + (lastN.vault_bytes||0)) / (1024**3);
+
+  $('tot-rate').textContent   = fmt(cBps);
+  $('tot-gb').textContent     = tGB.toFixed(4);
+  $('tot-chunks').textContent = cChunks.toLocaleString();
+
+  const pillR = $('pill-rate');
+  if (pillR) {
+    pillR.textContent = fmt(cBps) + ' b/s';
+    pillR.classList.toggle('dim', cBps === 0);
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(initEscher, 100);
+
+  // Monitor feeds via snapshot polling — avoids the MJPEG onerror false-positive
+  monitorFeed(
+    'feed-true', 'off-true',
+    'http://127.0.0.1:8090/stream_usb.mjpeg',
+    'http://127.0.0.1:8090/snapshot_usb.jpg'
+  );
+  monitorFeed(
+    'feed-near', 'off-near',
+    'http://127.0.0.1:8090/stream_builtin.mjpeg',
+    'http://127.0.0.1:8090/snapshot_builtin.jpg'
+  );
+
+  poll();
+  setInterval(poll, 1200);
+});
+</script>
+</body>
+</html>

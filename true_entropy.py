@@ -23,7 +23,7 @@ import threading
 # CONFIG
 # ─────────────────────────────────────────────
 CAM_URL     = os.getenv("TRUE_CAM_URL",  "http://127.0.0.1:8090/snapshot_usb.jpg")
-TRUE_DIR    = Path(r"C:\QRNG_Pool")
+TRUE_DIR    = Path(os.getenv("QRNG_POOL_DIR", r"D:\STORAGE\QRNG_Pool"))
 POOL_DIR    = TRUE_DIR / "true_pool"
 VAULT_FILE  = TRUE_DIR / "true_vault.bin"
 STATS_FILE  = TRUE_DIR / "true_stats.json"
@@ -35,8 +35,9 @@ CAPTURE_HZ  = 15
 LSB_DEPTH   = 4
 CHUNK_BYTES = 256
 MAX_POOL_MB = 500
-NOISE_FLOOR = 0.001   # lowered — direct laser at close range saturates but still has shot noise
-LASER_MIN   = 5       # lowered — allow near-saturated bright frames
+NOISE_FLOOR        = 0.001   # direct laser at close range saturates but still has shot noise
+LASER_MIN          = 30      # real laser spot typically saturates 50–500 px; reject <30
+REQUIRE_LASER_SPOT = True    # reject diffuse ambient light — require concentrated bright spot
 
 TRUE_DIR.mkdir(exist_ok=True)
 POOL_DIR.mkdir(exist_ok=True)
@@ -136,6 +137,26 @@ def von_neumann(bits):
     return pairs[diff, 0]
 
 def extract_true(frame_prev, frame_curr, mask):
+    # ── Laser spot concentration check ────────────────────────────────────────
+    bright_mask = frame_curr > 200
+    n_bright = int(bright_mask.sum())
+    laser_detected = False
+    concentration = 0.0
+    if n_bright >= LASER_MIN:
+        ys, xs = np.where(bright_mask)
+        bbox_area = (int(ys.max() - ys.min()) + 1) * (int(xs.max() - xs.min()) + 1)
+        concentration = bbox_area / max(n_bright, 1)
+        laser_detected = concentration <= 500   # tight spot vs diffuse ambient light
+
+    log.info(f"Laser: {n_bright} bright px, concentration {concentration:.1f} — "
+             f"{'VALID' if laser_detected else 'DIFFUSE/REJECTED'}")
+
+    if REQUIRE_LASER_SPOT and not laser_detected:
+        if n_bright > 0:
+            log.warning("[TRUE] Bright pixels are diffuse (ambient light, not laser). Skipping frame.")
+        return None, "NO_LASER_SPOT"
+
+    # ── Entropy extraction ─────────────────────────────────────────────────────
     avg = float(np.mean(frame_curr[mask]))
     if avg < LASER_MIN:
         return None, "DARK"

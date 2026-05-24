@@ -19,7 +19,7 @@ except Exception: pass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ── Paths ──
-from config import NEAR_VAULT, NEG_STATS, NEG_SEED_F
+from config import NEAR_VAULT, NEAR_OFFSET, NEG_STATS, NEG_SEED_F
 PORT       = 8767
 
 
@@ -116,21 +116,25 @@ _stats_lock = threading.Lock()
 def _get_quantum_seed(n: int = 64) -> bytes:
     """
     Pull n bytes from near_vault.bin as DRBG seed material.
+    Uses NEAR_OFFSET to read only from bytes actually written by the entropy
+    engine — avoids reading pre-allocated zeros on first boot.
     Falls back to OS entropy if vault not yet ready.
     """
     try:
-        if NEAR_VAULT.exists():
-            sz = NEAR_VAULT.stat().st_size
-            if sz >= n:
+        if NEAR_VAULT.exists() and NEAR_OFFSET.exists():
+            written = int(NEAR_OFFSET.read_text().strip())
+            if written >= n:
                 with open(NEAR_VAULT, "rb") as f:
-                    # Read from middle of vault to avoid the offset-0 area
-                    offset = max(0, sz // 2 - n // 2)
-                    f.seek(offset)
+                    # Read from the middle of actually-written bytes only
+                    seek_pos = max(0, written // 2 - n // 2)
+                    f.seek(seek_pos)
                     data = f.read(n)
-                if len(data) == n:
+                # Sanity check: reject if all zeros (shouldn't happen, but guard anyway)
+                if len(data) == n and any(b != 0 for b in data):
                     return data
     except Exception as e:
         print(f"[NEG] quantum seed read failed: {e} — falling back to OS entropy")
+    print("[NEG] Vault not ready — seeding from OS entropy (will auto-reseed from vault later)")
     return os.urandom(n)
 
 
@@ -144,10 +148,24 @@ def _seed_and_monitor():
     entropy = _get_quantum_seed(64)
     _drbg.seed(entropy)
 
-    # Save seed backup (security note: keep this file private)
+    # Save seed backup encrypted with Windows DPAPI (bound to this user account)
     try:
+        import ctypes, ctypes.wintypes
+        class _Blob(ctypes.Structure):
+            _fields_ = [("cbData", ctypes.wintypes.DWORD),
+                        ("pbData", ctypes.POINTER(ctypes.c_byte))]
+        def _dpapi_protect(data: bytes) -> bytes:
+            b_in  = _Blob(len(data), ctypes.cast(ctypes.c_char_p(data), ctypes.POINTER(ctypes.c_byte)))
+            b_out = _Blob()
+            if not ctypes.windll.crypt32.CryptProtectData(
+                    ctypes.byref(b_in), None, None, None, None, 0, ctypes.byref(b_out)):
+                raise OSError(f"DPAPI protect failed: {ctypes.GetLastError()}")
+            result = bytes(ctypes.string_at(b_out.pbData, b_out.cbData))
+            ctypes.windll.kernel32.LocalFree(b_out.pbData)
+            return result
         NEG_SEED_F.parent.mkdir(parents=True, exist_ok=True)
-        NEG_SEED_F.write_bytes(entropy)
+        NEG_SEED_F.write_bytes(_dpapi_protect(entropy))
+        print(f"[NEG] Seed backup encrypted with DPAPI → {NEG_SEED_F}")
     except Exception as e:
         print(f"[NEG] seed backup write failed: {e}")
 
@@ -165,6 +183,7 @@ def _seed_and_monitor():
     t0      = time.monotonic()
     b0      = 0
     tick    = 0
+    _next_reseed = 1 << 30   # trigger first auto-reseed after 1 GB generated
 
     while True:
         time.sleep(2)
@@ -180,8 +199,9 @@ def _seed_and_monitor():
         b0      = bgen
         t0      = time.monotonic()
 
-        # Reseed every ~1 GB generated from fresh quantum bytes
-        if bgen > 0 and bgen % (1 << 30) < 8192:
+        # Reseed every ~1 GB generated — fires exactly once per GB threshold
+        if bgen >= _next_reseed:
+            _next_reseed = bgen + (1 << 30)
             new_entropy = _get_quantum_seed(64)
             _drbg.seed(new_entropy)
             print(f"[NEG] Auto-reseed #{_drbg.reseed_count} from quantum vault")
@@ -297,9 +317,10 @@ class NegHandler(BaseHTTPRequestHandler):
                         pass
             det = bytearray(_drbg.generate(n))
             try:
-                if NEAR_VAULT.exists() and NEAR_VAULT.stat().st_size >= n:
+                written = int(NEAR_OFFSET.read_text().strip()) if NEAR_OFFSET.exists() else 0
+                if NEAR_VAULT.exists() and written >= n:
                     import random as _r
-                    off = _r.randint(0, NEAR_VAULT.stat().st_size - n)
+                    off = _r.randint(0, written - n)
                     with open(NEAR_VAULT, "rb") as vf:
                         vf.seek(off)
                         qbytes = vf.read(n)
