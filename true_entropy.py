@@ -22,7 +22,7 @@ import threading
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-CAM_URL     = os.getenv("TRUE_CAM_URL",  "http://127.0.0.1:8090/snapshot_usb.jpg")
+CAM_URL     = os.getenv("TRUE_CAM_URL",  "http://127.0.0.1:8090/snapshot/1.jpg")
 TRUE_DIR    = Path(os.getenv("QRNG_POOL_DIR", r"D:\STORAGE\QRNG_Pool"))
 POOL_DIR    = TRUE_DIR / "true_pool"
 VAULT_FILE  = TRUE_DIR / "true_vault.bin"

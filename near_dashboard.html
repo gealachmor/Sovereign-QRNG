@@ -2387,6 +2387,12 @@ async function pollTrue() {
     [$('lorenz-true-overlay'),$('escher-true-overlay')].forEach(ov=>{
       if(ov) ov.classList.toggle('hidden', laserLive);
     });
+    // Sync hardware sentinel row status with engine state
+    const hwSt=$('true-hw-cam-status');
+    if (hwSt && hwSt.textContent !== 'NEEDED') {
+      hwSt.textContent = laserLive ? 'LIVE' : (st==='NO_LASER_SPOT' ? 'NO LASER' : 'CONNECTED');
+      hwSt.className   = 'hw-status ' + (laserLive ? 'connected' : st==='NO_LASER_SPOT' ? 'available' : 'connected');
+    }
     $('t-bps').textContent=fmtBps(d.bits_per_sec||0);
     const bal=d.bit_balance||0;
     $('t-bal').textContent=bal.toFixed(4);
