@@ -1985,19 +1985,19 @@ async function initCamStack() {
     const r = await fetch('http://127.0.0.1:8090/cameras', {signal: AbortSignal.timeout(3000)});
     if (!r.ok) return;
     const cams = await r.json();
-    _cams = cams;
+    _cams = cams.filter(c => c.label === 'A');   // NEAR tab shows CAM-A only; CAM-B+ belong to TRUE tab
     const stack = $('cam-stack');
     const camLabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $('cam-count').textContent = cams.length + ' / 50';
+    $('cam-count').textContent = _cams.length + ' / 50';
     // Update card-0 with real data
-    if (cams[0]) {
+    if (_cams[0]) {
       stack.querySelector('#cam-card-0 .cam-card-name').textContent =
-        'CAM-' + (cams[0].label||'A') + ' · ' + (cams[0].is_builtin ? 'Built-in' : 'USB');
-      $('feed-img').src = 'http://127.0.0.1:8090' + cams[0].stream;
+        'CAM-' + (_cams[0].label||'A') + ' · ' + (_cams[0].is_builtin ? 'Built-in' : 'USB');
+      $('feed-img').src = 'http://127.0.0.1:8090' + _cams[0].stream;
     }
-    // Render extra cameras (index 1+)
-    for (let i = 1; i < cams.length && i < 50; i++) {
-      const c = cams[i];
+    // Render extra cameras (index 1+) — only cameras with label A appear here
+    for (let i = 1; i < _cams.length && i < 50; i++) {
+      const c = _cams[i];
       const label = 'CAM-' + (c.label || camLabels[i] || i);
       const tag = c.is_builtin ? 'Built-in' : 'USB';
       const card = document.createElement('div');
@@ -2042,7 +2042,7 @@ async function initTrueCamStack() {
     const r = await fetch('http://127.0.0.1:8090/cameras', {signal: AbortSignal.timeout(3000)});
     if (!r.ok) return;
     const cams = await r.json();
-    _trueCams = cams.filter(c => !c.is_builtin);
+    _trueCams = cams.filter(c => c.label !== 'A');  // TRUE tab shows CAM-B+ only; CAM-A belongs to NEAR tab
     const stack = $('true-cam-stack');
     $('true-cam-count').textContent = _trueCams.length + ' / 50';
     const camLabels = 'BCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -2052,7 +2052,7 @@ async function initTrueCamStack() {
     const hwStatus = $('true-hw-cam-status');
     const srcName  = $('true-cam-src-name');
     if (_trueCams[0]) {
-      const lbl = 'CAM-' + (camLabels[0] || 'B');
+      const lbl = 'CAM-' + (_trueCams[0].label || 'B');
       stack.querySelector('#true-cam-card-0 .cam-card-name').textContent = lbl + ' · Laser Shot';
       $('true-feed-img').src = 'http://127.0.0.1:8090' + _trueCams[0].stream;
       if (hwDot)    { hwDot.className = 'hw-dot connected'; }
@@ -2068,7 +2068,7 @@ async function initTrueCamStack() {
     }
     for (let i = 1; i < _trueCams.length && i < 50; i++) {
       const c = _trueCams[i];
-      const label = 'CAM-' + (camLabels[i] || i);
+      const label = 'CAM-' + (c.label || i);
       const card = document.createElement('div');
       card.className = 'cam-card';
       card.id = 'true-cam-card-' + i;
@@ -2129,6 +2129,40 @@ async function checkFeed() {
   }
 }
 setTimeout(checkFeed,1500); setInterval(checkFeed,4000);
+
+// ── TRUE CAM LIVENESS CHECK ──
+let trueWasOffline = true;
+async function checkTrueFeed() {
+  try {
+    const cam = _trueCams[0];
+    const snapUrl = cam
+      ? 'http://127.0.0.1:8090' + cam.snapshot
+      : 'http://127.0.0.1:8090/snapshot/1.jpg';
+    const r = await fetch(snapUrl, {cache:'no-store', signal: AbortSignal.timeout(2500)});
+    if (r.ok) {
+      const bdg = $('true-cam-card-bdg-0');
+      const dot = $('true-cam-sdot-0');
+      const ov  = $('true-feed-offline');
+      const cambdg = $('true-cam-badge');
+      if (bdg) { bdg.textContent='LIVE'; bdg.className='cam-card-bdg live'; }
+      if (dot) { dot.classList.add('live'); }
+      if (ov)  { ov.style.display='none'; $('true-feed-img').style.opacity='1'; }
+      if (cambdg) { cambdg.textContent='LIVE'; cambdg.className='badge live'; }
+      trueWasOffline = false;
+    } else throw 0;
+  } catch {
+    if (!trueWasOffline) {
+      const bdg = $('true-cam-card-bdg-0');
+      const ov  = $('true-feed-offline');
+      const cambdg = $('true-cam-badge');
+      if (bdg) { bdg.textContent='OFFLINE'; bdg.className='cam-card-bdg warn'; }
+      if (ov)  { ov.style.display='flex'; $('true-feed-img').style.opacity='0'; }
+      if (cambdg) { cambdg.textContent='OFFLINE'; cambdg.className='badge dim'; }
+      trueWasOffline = true;
+    }
+  }
+}
+setTimeout(checkTrueFeed, 2000); setInterval(checkTrueFeed, 4000);
 
 // ── DYNAMIC SOURCE REGISTRY ──
 const SRC_META = {
