@@ -85,43 +85,32 @@ python process_manager.py
 
 ## RTL-SDR SETUP (CRITICAL — READ THIS FIRST)
 
-### Step 1 — Driver (Zadig)
+Full guides are in the `docs/` folder:
 
-> **If running Windows 11 with Memory Integrity (HVCI) enabled, you MUST use WinUSB — not libusbK.** libusbK is not HVCI-compatible and will fail to load after a reboot with Memory Integrity active. WinUSB is Microsoft-signed and passes HVCI with no issues.
+| Guide | What it covers |
+|-------|---------------|
+| [`docs/RTL_SDR_TOOLS.md`](docs/RTL_SDR_TOOLS.md) | Downloading `rtl_sdr.exe` / `rtl_tcp.exe` / `rtl_test.exe`, install path, env var override |
+| [`docs/ZADIG_SETUP.md`](docs/ZADIG_SETUP.md) | WinUSB driver install (HVCI-safe), multi-dongle setup, post-reboot verification |
+| [`docs/WIRESHARK_NPCAP.md`](docs/WIRESHARK_NPCAP.md) | Npcap + tshark for the network watchdog (optional) |
 
-1. Download **Zadig** from https://zadig.akeo.ie — run as Administrator
-2. Plug in your RTL-SDR dongle
-3. In Zadig: Options → List All Devices
-4. Select **RTL2832U** (or Bulk-In, Interface 0)
-5. Set driver to **WinUSB**
-6. Click **Install Driver** → wait for completion
-7. Repeat for each additional dongle
+### Quick summary
 
-### Step 2 — Power Management (prevents 10-second dropout)
+> **HVCI / Memory Integrity users:** You **must** use **WinUSB** in Zadig — not libusbK.
+> libusbK fails the kernel code-integrity check on every reboot. See `docs/ZADIG_SETUP.md`.
 
-The RTL-SDR will disconnect every ~10 seconds unless you disable selective suspend:
+1. **Get the tools** — download the Osmocom RTL-SDR Windows binaries (see `docs/RTL_SDR_TOOLS.md`), place at `%QRNG_POOL_DIR%\rtlsdr_tools\x64\`
+2. **Install the driver** — run Zadig as Administrator, set driver to **WinUSB** (see `docs/ZADIG_SETUP.md`)
+3. **Fix power management** — prevents 10-second USB dropout:
 
 ```powershell
 # Run as Administrator
-
-# High Performance power plan
 powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
-
-# System-wide USB selective suspend
 reg add "HKLM\SYSTEM\CurrentControlSet\Services\USB" /v "DisableSelectiveSuspend" /t REG_DWORD /d 1 /f
 ```
 
-Also go to: Device Manager → Universal Serial Bus controllers → each USB Root Hub → Properties → Power Management → uncheck "Allow the computer to turn off this device to save power"
+Also: Device Manager → Universal Serial Bus controllers → each USB Root Hub → Properties → Power Management → uncheck "Allow the computer to turn off this device to save power". Reboot.
 
-Reboot after applying.
-
-### Step 3 — Verify
-
-```powershell
-# Replace with your actual rtl_sdr.exe path
-rtl_sdr.exe -f 96900000 -s 256000 -g 29 -n 256000 - | Out-Null
-# Should run silently for 1+ seconds without "Failed to open" errors
-```
+4. **Verify** — `rtl_test.exe` should list your dongle(s) without errors
 
 ---
 
